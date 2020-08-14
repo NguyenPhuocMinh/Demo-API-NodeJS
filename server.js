@@ -4,7 +4,7 @@ const server = require('web-server');
 const mappings = require('./src/mappings/index');
 
 if (require.main === module) {
-  server.mappingServer(mappings);
+  server.mappingApi(mappings);
   server.start();
   server.repository();
   const stopped = function () {

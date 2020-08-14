@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js",
-    "heroku-postbuild": "git+https://github.com/NguyenPhuocMinh/Shop-Acc-UI.git#7b728a701d50a297ca791bf324e9aad3c58258ee && npm install && npm run build-api-local"
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
@@ -14,7 +13,7 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^8.5.1",
-    "modeller": "git+https://github.com/NguyenPhuocMinh/Modeller.git#3dc326b0f222cd2bf754f77df303219e5fba43ae",
-    "web-server": "git+https://github.com/NguyenPhuocMinh/Web-Server.git#fe5e5e5e010fc2e3ac7a1fc19ae676d0c91b2784"
+    "modeller": "git+https://github.com/NguyenPhuocMinh/Modeller.git#",
+    "web-server": "git+https://github.com/NguyenPhuocMinh/Web-Server.git#"
   }
 }
