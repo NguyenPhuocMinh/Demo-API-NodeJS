@@ -13,7 +13,10 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^8.5.1",
-    "modeller": "git+https://github.com/NguyenPhuocMinh/Modeller.git#",
-    "web-server": "git+https://github.com/NguyenPhuocMinh/Web-Server.git#839a461793ab04a20e4007296edf5909bc1af9bd"
+    "modeller": "git+https://github.com/NguyenPhuocMinh/Modeller.git#3dc326b0f222cd2bf754f77df303219e5fba43ae",
+    "web-server": "git+https://github.com/NguyenPhuocMinh/Web-Server.git#bc3b5dba26b1863a1e16861b3a20faf39aacd8da"
+  },
+  "engines": {
+    "node": "10.x"
   }
 }
