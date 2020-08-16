@@ -24,4 +24,11 @@ module.exports = [
     methodName: 'refreshToken',
     serviceName: UserService
   },
+  // change pass word
+  {
+    pathName: '/user/changePasswords/:id',
+    method: 'PUT',
+    methodName: 'changePassword',
+    serviceName: UserService
+  },
 ]

@@ -18,8 +18,14 @@ const {
   duplicateEmailRegister,
   verifiedPasswordRegister,
   notFoundEmail,
-  inValidPassword
+  inValidPassword,
+  invalidCurrentPassword,
+  invalidVerifiedNewPassword
 } = require('../../config/dev/returnErrorCodes');
+const {
+  returnSuccessCodes,
+  successChangePass
+} = require('../../config/dev/returnSuccessCodes');
 const { isEmpty } = lodash;
 let tokenList = {};
 
@@ -202,7 +208,6 @@ function UserService() {
   };
 
   this.changePassword = async function (req, res) {
-    const { error } = changePassValidation(req.body);
     let userId = req.params.id;
     // tìm password trong database
     const user = await User.findOne({ _id: userId }, {
@@ -212,17 +217,16 @@ function UserService() {
     // lấy băm mật khẩu trong database
     const currentPassword = await bcrypt.compare(req.body.currentPassword, userPassword);
     if (!currentPassword) {
-      return res.status(400).send({ error: 'Mật khẩu hiện tại không đúng' });
+      return res
+        .status(400)
+        .send(returnErrorCodes(invalidCurrentPassword));
     }
     // tạo mật khẩu mới
     const salt = await bcrypt.genSalt(10);
     const newPassword = await bcrypt.hash(req.body.newPassword, salt);
     const verifiedNewPassword = await bcrypt.hash(req.body.verifiedNewPassword, salt);
     if (verifiedNewPassword !== newPassword) {
-      return res.status(400).send({ error: 'Xác nhận mật khẩu không trùng khớp' });
-    }
-    if (error) {
-      return res.status(400).send({ error: error.details[0].message });
+      return res.status(400).send(returnErrorCodes(invalidVerifiedNewPassword));
     }
     const updateUser = User.updateOne({ _id: userId }, {
       password: newPassword,
@@ -231,7 +235,9 @@ function UserService() {
     updateUser
       .then(result => {
         if (result.ok === 1) {
-          res.status(200).send({ message: 'Thay đổi mật khẩu thành công!' })
+          res
+            .status(200)
+            .send(returnSuccessCodes(successChangePass))
         }
       })
       .catch(err => {
