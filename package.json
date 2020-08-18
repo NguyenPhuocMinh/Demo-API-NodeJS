@@ -9,9 +9,6 @@
   },
   "keywords": [
     "node js",
-    "react-admin",
-    "react-redux",
-    "redux-form",
     "heroku"
   ],
   "author": "Minh Nguyễn",
@@ -20,7 +17,7 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^8.5.1",
     "modeller": "git+https://github.com/NguyenPhuocMinh/Modeller.git#3dc326b0f222cd2bf754f77df303219e5fba43ae",
-    "web-server": "git+https://github.com/NguyenPhuocMinh/Web-Server.git#8a371c1fd16e51eb116f8d3b03e1fe40002e427b"
+    "web-server": "git+https://github.com/NguyenPhuocMinh/Web-Server.git#1333225b9aab70ae49bfbe3cbd7b0a224ee4c183"
   },
   "engines": {
     "node": "10.x"
