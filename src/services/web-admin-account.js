@@ -188,6 +188,7 @@ function convertAccountResponse(account) {
 
 function createFindQuery(params) {
   let q = params.q;
+  const { activated } = params;
   const query = {
     $and: [
       {
@@ -196,7 +197,7 @@ function createFindQuery(params) {
     ]
   }
 
-  if (!lodash.isEmpty(q)) {
+  if (!isEmpty(q)) {
     q = slugifyString(q);
     query["$and"] = [];
     let subQuerySearch = { $or: [] };
@@ -207,6 +208,10 @@ function createFindQuery(params) {
       subQuerySearch["$or"].push(searchCondition);
     });
     query["$and"].push(subQuerySearch);
+  };
+
+  if (activated) {
+    query['$and'].push({ activated: activated })
   }
 
   return query;

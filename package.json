@@ -17,7 +17,7 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^8.5.1",
     "modeller": "git+https://github.com/NguyenPhuocMinh/Modeller.git#3dc326b0f222cd2bf754f77df303219e5fba43ae",
-    "web-server": "git+https://github.com/NguyenPhuocMinh/Web-Server.git#1333225b9aab70ae49bfbe3cbd7b0a224ee4c183"
+    "web-server": "git+https://github.com/NguyenPhuocMinh/Web-Server.git#eff617d0227c8fd13c02d06c651ac766a75e86dc"
   },
   "engines": {
     "node": "10.x"

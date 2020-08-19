@@ -21,7 +21,7 @@ module.exports = [
   {
     pathName: '/user/refreshTokens',
     method: 'POST',
-    methodName: 'refreshToken',
+    methodName: 'refreshTokenHandler',
     serviceName: UserService
   },
   // change pass word

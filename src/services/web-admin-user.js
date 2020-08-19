@@ -95,8 +95,11 @@ function UserService() {
       loggingFactory.silly('User Login Info:',
         [
           { 'userId': userLogin.id },
+          { 'refreshToken': refreshToken },
+          { 'expiresIn': data.tokenLife },
           { 'name': userLogin.firstName + " " + userLogin.lastName },
-          { 'permissions': userLogin.permissions }
+          { 'permissions': userLogin.permissions },
+          { 'webConfigs': webConfigs }
         ]
       )
       res
@@ -104,6 +107,7 @@ function UserService() {
         .send({
           token: token,
           refreshToken: refreshToken,
+          expiresIn: data.tokenLife,
           id: userLogin.id,
           name: userLogin.firstName + " " + userLogin.lastName,
           permissions: userLogin.permissions,
@@ -115,7 +119,7 @@ function UserService() {
     }
   };
 
-  this.refreshToken = async function (req, res) {
+  this.refreshTokenHandler = async function (req, res) {
     const { refreshToken } = req.body;
     try {
       // Kiểm tra mã Refresh token
@@ -126,9 +130,27 @@ function UserService() {
       const token = await jwt.sign({ userLogin }, data.secret, {
         expiresIn: data.tokenLife,
       });
+      const refreshTokenHandle = jwt.sign({ userLogin }, data.refreshTokenSecret, {
+        expiresIn: data.refreshTokenLife
+      })
+      loggingFactory.silly('refreshTokenHandler Info:',
+        [
+          { 'userId': userLogin.id },
+          { 'refreshToken': refreshToken },
+          { 'expiresIn': data.tokenLife },
+          { 'permissions': userLogin.permissions },
+          { 'webConfigs': webConfigs }
+        ]
+      )
       res
+        .header('X-Access-Token', token)
         .send({
-          token: token
+          token: token,
+          id: userLogin.id,
+          refreshToken: refreshTokenHandle,
+          expiresIn: data.tokenLife,
+          permissions: userLogin.permissions,
+          webConfigs: webConfigs
         })
     } catch (err) {
       loggingFactory.error('Refresh Token Error:', err);
