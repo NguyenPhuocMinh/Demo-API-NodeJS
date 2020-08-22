@@ -13,7 +13,7 @@ const {
   returnErrorCodes,
   duplicateSlugAccount
 } = require('../../config/dev/returnErrorCodes');
-const { isEmpty, get } = lodash;
+const { isEmpty, get, isNil } = lodash;
 
 function AccountService() {
   const timezone = constant.TIMEZONE_DEFAULT;
@@ -35,13 +35,14 @@ function AccountService() {
       skin: req.body.skin,
       pearl_points: req.body.pearl_points,
       status: req.body.status,
+      numberAcc: req.body.numberAcc,
       slug: slug,
       createdAt: nowMoment,
       createdBy: 'SYSTEMS',
       updatedAt: nowMoment,
       updatedBy: 'SYSTEMS'
     })
-    return checkDuplicateSlug(slug)
+    return checkDuplicateSlug(slug, req.body.numberAcc)
       .then(duplicate => {
         if (duplicate) {
           loggingFactory.info('duplicate', duplicate);
@@ -112,15 +113,16 @@ function AccountService() {
   };
   // Update Account
   this.updateAccount = async function (req, res) {
-    const thumbnail = req.body.thumbnail;
-    const thumbnailBase64 = get(thumbnail, 'src');
-
+    const thumbnail = isNil(req.body.thumbnail) ? '' : req.body.thumbnail.src;
+    if (!isBase64(thumbnail)) {
+      delete req.body.thumbnail;
+    }
     const salt = await bcrypt.genSalt(10);
     const hashPassword = await bcrypt.hash(req.body.password, salt);
     const slug = slugifyString(req.body.userName)
     const accountId = req.params.id;
 
-    return checkDuplicateSlug(slug, accountId)
+    return checkDuplicateSlug(slug, req.body.numberAcc, accountId)
       .then(duplicate => {
         if (duplicate) {
           if (duplicate) {
@@ -139,8 +141,9 @@ function AccountService() {
             gold: req.body.gold,
             skin: req.body.skin,
             pearl_points: req.body.pearl_points,
-            thumbnail: thumbnailBase64,
+            thumbnail: thumbnail,
             status: req.body.status,
+            numberAcc: req.body.numberAcc,
             activated: req.body.activated,
             slug: slug,
             updatedAt: nowMoment,
@@ -158,10 +161,13 @@ function AccountService() {
   };
 };
 
-function checkDuplicateSlug(slug, id) {
+function checkDuplicateSlug(slug, numberAcc, id) {
   return Account.countDocuments({
     _id: { $ne: id },
-    slug: slug
+    $or: [
+      { slug: slug },
+      { numberAcc: numberAcc }
+    ]
   }).then(result => result >= 1 ? true : false)
 }
 
@@ -185,6 +191,14 @@ function convertAccountResponse(account) {
     return Promise.resolve();
   }
 };
+
+function isBase64(str) {
+  try {
+    return btoa(atob(str)) == str;
+  } catch (err) {
+    return false;
+  }
+}
 
 function createFindQuery(params) {
   let q = params.q;

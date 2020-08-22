@@ -13,7 +13,7 @@ const invalidVerifiedNewPassword = 'resources.users.errors.invalidVerifiedNewPas
 
 const returnErrorCodes = (errorMessage) => {
   const errorObject = {};
-  errorObject.error = errorMessage;
+  errorObject.message = errorMessage;
   return errorObject;
 }
 
