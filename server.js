@@ -2,11 +2,12 @@
 
 const server = require('web-server');
 const mappings = require('./src/mappings/index');
+const sandboxConfig = require('./config/dev/sandboxConfig');
 
 if (require.main === module) {
   server.mappingApi(mappings);
   server.start();
-  server.repository();
+  server.repository(sandboxConfig);
   const stopped = function () {
     server.stop();
   };
