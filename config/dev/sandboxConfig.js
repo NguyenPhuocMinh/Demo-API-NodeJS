@@ -2,6 +2,6 @@
 
 module.exports = {
   application: {
-    isMongodbLocal: false,
+    isMongodbLocal: true,
   }
 }

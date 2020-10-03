@@ -3,7 +3,6 @@
 const AccountService = require('../../services/web-admin-account');
 
 module.exports = [
-
   // create account
   {
     pathName: '/accounts',

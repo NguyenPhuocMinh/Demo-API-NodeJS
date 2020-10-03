@@ -186,49 +186,6 @@ function UserService() {
     }
   };
 
-  this.showUser = async function (req, res) {
-    let response = {};
-    let params = req.query;
-    let args = req.query;
-    const skip = parseInt(params._start) || constants.SKIP_DEFAULT;
-    let limit = parseInt(params._end) || constants.LIMIT_DEFAULT;
-    limit = limit - skip;
-    const query = createFindQuery(args);
-    const sort = createSortQuery(params);
-    const user = User.find(
-      query,
-      {
-        createdAt: 0,
-        createdBy: 0,
-        updatedAt: 0,
-        updatedBy: 0,
-        __v: 0
-      },
-      { skip, limit, sort }
-    )
-      .populate('adminApp.roles')
-    user
-      .then(users => convertBodyUser(users))
-      .then(bodyUsers => {
-        response.data = bodyUsers;
-        return Promise.resolve();
-      })
-      .then(() => User.countDocuments())
-      .then(count => {
-        response.total = count;
-        return response;
-      })
-      .then(() =>
-        res
-          .header("X-Total-Count", response.total)
-          .header("Access-Control-Expose-Headers", "X-Total-Count")
-          .send(response.data)
-      )
-      .catch(err => {
-        return Promise.reject(err);
-      });
-  };
-
   this.changePassword = async function (req, res) {
     let userId = req.params.id;
     // tìm password trong database
@@ -267,138 +224,12 @@ function UserService() {
         return Promise.reject(err)
       })
   };
-
-  this.resetPassword = async function (req, res) {
-    loggingFactory.info(req.body);
-    // Check error
-    const { error } = resetPassValidation(req.body);
-    const userId = req.params.id;
-    // new Password
-    const salt = await bcrypt.genSalt(10);
-    const newPassword = await bcrypt.hash(req.body.newPassword, salt);
-    const verifiedNewPassword = await bcrypt.hash(req.body.verifiedNewPassword, salt);
-    if (verifiedNewPassword !== newPassword) {
-      return res.status(400).send({ error: 'Xác nhận mật khẩu không trùng khớp' });
-    }
-    if (error) {
-      return res.status(400).send({ error: error.details[0].message });
-    }
-    // update password
-    const updateUser = User.updateOne({ _id: userId }, {
-      password: newPassword,
-      verifiedPassword: verifiedNewPassword
-    }, { new: true })
-    updateUser
-      .then(result => {
-        if (result.ok === 1) {
-          res
-            .status(200)
-            .send({ message: 'Thay đổi mật khẩu thành công!' });
-        }
-      })
-      .catch(err => {
-        loggingFactory.error('Change Pass Error: ', err);
-        return Promise.reject(err)
-      })
-  };
-
-  this.sendEmailResetPassword = async function (req, res) {
-    const userLogin = await User.findOne({ _id: req.params.id });
-    if (!userLogin) {
-      return res.status(400).send({ error: 'Email không được tìm thấy' });
-    }
-    const transporter = await nodemailer.createTransport({
-      service: 'Gmail',
-      auth: {
-        user: 'xiuquay55@gmail.com',
-        pass: 'Minh0505'
-      },
-      tls: {
-        // do not fail on invalid certs
-        rejectUnauthorized: false
-      }
-    });
-    const tokenResetPassword = lodash.get(userLogin, 'adminApp.resetPassword');
-    const urlChangePass = `http://localhost:4000/#reset/password/${tokenResetPassword}`;
-    const output =
-      `<p>Hey ${userLogin.firstName + ' ' + userLogin.lastName || userLogin.email},</p>
-    <p>We heard that you lost your Backwoods password. Sorry about that!</p>
-    <p>But don’t worry! You can use the following link to reset your password:</p>
-    <p> ${urlChangePass} </p>
-    <p>If you don’t use this link within 1 hour, it will expire.</p>
-    <p>Do something outside today! </p>
-    <p>–Your friends at Backwoods</p>`
-
-    const mailOptions = {
-      from: userLogin.email,
-      to: 'xiuquay55@gmail.com',
-      subject: 'Test nodemailer',
-      html: output
-    }
-    transporter.sendMail(mailOptions, function (err, info) {
-      if (err) {
-        loggingFactory.error('Send Error', err);
-        return res.status(400).send({ error: 'Email không được tìm thấy' });
-      } else {
-        // res.redirect('/forgot');
-        return res.send({ message: 'Gửi thành công!, Xin kiểm tra lại mail!' });
-      }
-    });
-  };
-
-  this.profile = async function (req, res) {
-    loggingFactory.info(JSON.stringify(req.params.id));
-    const userId = req.params.id;
-    const userLogin = User.findById({ _id: userId });
-    if (!userLogin) {
-      return res.status(400).send({ error: 'Không tìm thấy thông tin!' });
-    }
-    userLogin
-      .then(user => convertUserResponse(user))
-      .then(result => res.send(result))
-      .catch(err => {
-        loggingFactory.error('Profile Has Error: ', err);
-        return Promise.reject(err);
-      });
-  };
-
-  this.updateProfile = function (req, res) {
-    loggingFactory.info(JSON.stringify(req.body));
-    // userId
-    const userId = req.params.id;
-    const user = User.findOneAndUpdate(userId, {
-      firstName: req.body.firstName,
-      lastName: req.body.lastName,
-      gender: !lodash.isNil(req.body.gender) ? req.body.gender : constants.GENDER_DEFAULT,
-      avatar: req.body.avatar,
-      createdAt: nowMoment,
-      createdBy: 'SYSTEMS',
-      updatedAt: nowMoment,
-      updatedBy: 'SYSTEMS'
-    }, { new: true })
-    user
-      .then(result => res.send(result))
-      .catch(err => {
-        loggingFactory.error("Update error", err);
-        return Promise.reject(err)
-      })
-  };
 };
 
 function checkDuplicateEmail(email) {
   return User.countDocuments({ email: email })
     .then(result => result >= 1 ? true : false)
 }
-
-function convertBodyUser(users) {
-  return Promise.map(
-    users,
-    user => {
-      return convertUserResponse(user);
-    },
-    { concurrency: 5 }
-  );
-};
 
 function convertUserResponse(user) {
   if (!isEmpty(user)) {
