@@ -12,20 +12,7 @@ const loggingFactory = require('web-server').loggingFactory;
 const data = require('../../config/data/secret');
 const verify = require('../utils/verifyToken');
 // const nodemailer = require('nodemailer');
-const webConfigs = require('../../config/dev/webConfigs');
-const {
-  returnErrorCodes,
-  duplicateEmailRegister,
-  verifiedPasswordRegister,
-  notFoundEmail,
-  inValidPassword,
-  invalidCurrentPassword,
-  invalidVerifiedNewPassword
-} = require('../../config/dev/returnErrorCodes');
-const {
-  returnSuccessCodes,
-  successChangePass
-} = require('../../config/dev/returnSuccessCodes');
+const returnCodes = require('../../config/dev/errorCodes');
 const { isEmpty } = lodash;
 let tokenList = {};
 
@@ -42,15 +29,13 @@ function UserService() {
     if (verifiedPassword !== hashPassword) {
       return res
         .status(400)
-        .send(returnErrorCodes(verifiedPasswordRegister));
+        .send(returnCodes('DuplicateProviderName'));
     }
     // Create User
     const user = new User({
       firstName: req.body.firstName,
       lastName: req.body.lastName,
       email: req.body.email,
-      gender: !lodash.isNil(req.body.gender) ? req.body.gender : constants.GENDER_DEFAULT,
-      avatar: req.body.avatar,
       password: hashPassword,
       verifiedPassword: verifiedPassword,
       permissions: req.body.permissions,
@@ -111,7 +96,7 @@ function UserService() {
           id: userLogin.id,
           name: userLogin.firstName + " " + userLogin.lastName,
           permissions: userLogin.permissions,
-          webConfigs: webConfigs
+          // webConfigs: webConfigs
         });
     } catch (err) {
       loggingFactory.error('Error Login:', JSON.stringify(err, null, 1))
@@ -150,7 +135,7 @@ function UserService() {
           refreshToken: refreshTokenHandle,
           expiresIn: data.tokenLife,
           permissions: userLogin.permissions,
-          webConfigs: webConfigs
+          // webConfigs: webConfigs
         })
     } catch (err) {
       loggingFactory.error('Refresh Token Error:', err);
@@ -198,7 +183,7 @@ function UserService() {
     if (!currentPassword) {
       return res
         .status(400)
-        .send(returnErrorCodes(invalidCurrentPassword));
+      // .send(returnErrorCodes(invalidCurrentPassword));
     }
     // tạo mật khẩu mới
     const salt = await bcrypt.genSalt(10);
@@ -216,7 +201,7 @@ function UserService() {
         if (result.ok === 1) {
           res
             .status(200)
-            .send(returnSuccessCodes(successChangePass))
+          // .send(returnSuccessCodes(successChangePass))
         }
       })
       .catch(err => {

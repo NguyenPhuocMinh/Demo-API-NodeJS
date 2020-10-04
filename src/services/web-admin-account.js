@@ -12,7 +12,7 @@ const slugifyString = require('web-server').slugifyString;
 const {
   returnErrorCodes,
   duplicateSlugAccount
-} = require('../../config/dev/returnErrorCodes');
+} = require('../../config/dev/errorCodes');
 const { isEmpty, get, isNil } = lodash;
 
 function AccountService() {
