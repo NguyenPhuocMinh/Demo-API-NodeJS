@@ -31,4 +31,11 @@ module.exports = [
     methodName: 'changePassword',
     serviceName: UserService
   },
+  // update user
+  {
+    pathName: '/user/updates/:id',
+    method: 'PUT',
+    methodName: 'updateUser',
+    serviceName: UserService
+  },
 ]

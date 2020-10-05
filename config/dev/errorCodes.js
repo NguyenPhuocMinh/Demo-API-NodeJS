@@ -5,9 +5,27 @@ const { get, eq } = lodash;
 
 const errorCodes = [
   {
-    nameCode: 'DuplicateProviderName',
-    messageCode: 'Name of provider is duplicated',
-    returnCode: 3001,
+    nameCode: 'InvalidVerifiedPassword',
+    messageCode: 'Xác nhận mật khẩu không hợp lệ',
+    returnCode: 1,
+    statusCode: 400,
+  },
+  {
+    nameCode: 'DuplicateEmailRegister',
+    messageCode: 'Email đã được đăng ký',
+    returnCode: 2,
+    statusCode: 400,
+  },
+  {
+    nameCode: 'EmailNotFound',
+    messageCode: 'Không tìm thấy email',
+    returnCode: 3,
+    statusCode: 400,
+  },
+  {
+    nameCode: 'InValidPassword',
+    messageCode: 'Mật khẩu không đúng',
+    returnCode: 4,
     statusCode: 400,
   },
 ]
