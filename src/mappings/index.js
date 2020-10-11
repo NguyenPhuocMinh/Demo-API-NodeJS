@@ -1,13 +1,13 @@
 'use strict';
 
-const AccountMappings = require('./router/account-mapping');
 const UserMappings = require('./router/user-mapping');
-const UploadMappings = require('./router/upload-mapping');
+const ProductMappings = require('./router/product-mapping');
+const ProductTypeMappings = require('./router/product-type-mapping');
 
 const mappings = [
-  ...AccountMappings,
   ...UserMappings,
-  ...UploadMappings
+  ...ProductMappings,
+  ...ProductTypeMappings
 ];
 
 module.exports = mappings;

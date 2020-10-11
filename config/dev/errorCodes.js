@@ -28,6 +28,18 @@ const errorCodes = [
     returnCode: 4,
     statusCode: 400,
   },
+  {
+    nameCode: 'DuplicateSlugProduct',
+    messageCode: 'Tên sản phẩm đã tồn tại',
+    returnCode: 5,
+    statusCode: 400,
+  },
+  {
+    nameCode: 'DuplicateSlugProductType',
+    messageCode: 'Loại sản phẩm đã tồn tại',
+    returnCode: 6,
+    statusCode: 400,
+  },
 ]
 
 const returnCodes = (name = '') => {
@@ -38,8 +50,8 @@ const returnCodes = (name = '') => {
     const returnCode = get(errorCode, 'returnCode');
     const statusCode = get(errorCode, 'statusCode');
     if (eq(nameCode, name)) {
-      error.nameCode = nameCode;
-      error.messageCode = messageCode;
+      error.name = nameCode;
+      error.message = messageCode;
       error.returnCode = returnCode;
       error.statusCode = statusCode;
     }

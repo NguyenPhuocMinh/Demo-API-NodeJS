@@ -9,7 +9,7 @@ const {
 } = webServer;
 const User = require("modeller").UserModel;
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const constants = require('../utils/constant');
 const data = require('../../config/data/secret');
 const verify = require('../utils/verifyToken');
