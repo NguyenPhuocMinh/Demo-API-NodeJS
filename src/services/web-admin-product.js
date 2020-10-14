@@ -10,12 +10,12 @@ const {
   slugifyString
 } = webServer;
 const Product = require('modeller').ProductModel;
-const constant = require('../utils/constant');
+const constants = require('../utils/constant');
 const returnCodes = require('../../config/dev/errorCodes');
 const { isEmpty, isNil } = lodash;
 
 function AccountService() {
-  const timezone = constant.TIMEZONE_DEFAULT;
+  const timezone = constants.TIMEZONE_DEFAULT;
   const nowMoment = moment.tz(timezone).utc();
 
   // Create Product
@@ -56,8 +56,8 @@ function AccountService() {
   // Get Products
   this.getProducts = function (req, res) {
     const params = req.query;
-    const skip = parseInt(params._start) || constant.SKIP_DEFAULT;
-    let limit = parseInt(params._end) || constant.LIMIT_DEFAULT;
+    const skip = parseInt(params._start) || constants.SKIP_DEFAULT;
+    let limit = parseInt(params._end) || constants.LIMIT_DEFAULT;
     limit = limit - skip;
     const query = createFindQuery(params);
     const sort = createSortQuery(params);

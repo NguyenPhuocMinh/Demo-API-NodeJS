@@ -13,9 +13,9 @@ const bcrypt = require('bcrypt');
 const constants = require('../utils/constant');
 const data = require('../../config/data/secret');
 const verify = require('../utils/verifyToken');
-// const nodemailer = require('nodemailer');
 const returnCodes = require('../../config/dev/errorCodes');
-const { isEmpty } = lodash;
+const webConfig = require('../../config/dev/webConfig');
+const { isEmpty, get, isArray } = lodash;
 let tokenList = {};
 
 function UserService() {
@@ -26,21 +26,24 @@ function UserService() {
   this.registerUser = async function (req, res) {
     loggingFactory.info(JSON.stringify(req.body));
     // Hash Password
-    const salt = await bcrypt.genSalt(10);
-    const hashPassword = await bcrypt.hash(req.body.password, salt);
-    const verifiedPassword = await bcrypt.hash(req.body.verifiedPassword, salt);
-    if (verifiedPassword !== hashPassword) {
-      return res
-        .status(400)
-        .send(returnCodes('InvalidVerifiedPassword'));
+    let password = '';
+    if (isEmpty(req.body.password)) {
+      password = '123';
+    } else {
+      password = req.body.password
     }
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(password, salt);
+    const permissions = convertPermissions(req.body.permissions);
+    console.log("UserService -> permissions", permissions)
+
     const user = new User({
       firstName: req.body.firstName,
       lastName: req.body.lastName,
       email: req.body.email,
       password: hashPassword,
-      verifiedPassword: verifiedPassword,
-      permissions: req.body.permissions,
+      permissions: permissions,
+      gender: req.body.gender,
       createdAt: nowMoment,
       createdBy: 'SYSTEMS',
       updatedAt: nowMoment,
@@ -97,11 +100,54 @@ function UserService() {
           id: userLogin.id,
           name: userLogin.firstName + " " + userLogin.lastName,
           permissions: userLogin.permissions,
+          webConfig: webConfig
         });
     } catch (err) {
       loggingFactory.error('Error Login:', JSON.stringify(err, null, 1))
       return Promise.reject(err);
     }
+  };
+  // get user
+  this.getUsers = function (req, res) {
+    const params = req.query;
+    console.log("this.getUsers -> params", params)
+    const skip = parseInt(params._start) || constants.SKIP_DEFAULT;
+    let limit = parseInt(params._end) || constants.LIMIT_DEFAULT;
+    limit = limit - skip;
+    const query = createFindQuery(params);
+    const sort = createSortQuery(params);
+
+    const response = {};
+    return User.find(query, {
+      createdAt: 0,
+      createdBy: 0,
+      updatedAt: 0,
+      updatedBy: 0
+    },
+      {
+        sort: sort, skip: skip, limit: limit
+      })
+      .then(users => convertGetUsers(users))
+      .then(dataResponse => {
+        response.data = dataResponse;
+      })
+      .then(() => {
+        return User.countDocuments(query)
+      })
+      .then(total => {
+        response.total = total;
+        return response;
+      })
+      .then(() => {
+        res
+          .header("X-Total-Count", response.total)
+          .header("Access-Control-Expose-Headers", "X-Total-Count")
+          .send(response.data)
+      })
+      .catch(err => {
+        loggingFactory.error('Get user Error', err);
+        return Promise.reject(err);
+      })
   };
   // refresh token
   this.refreshTokenHandler = async function (req, res) {
@@ -201,7 +247,6 @@ function UserService() {
         if (result.ok === 1) {
           res
             .status(200)
-          // .send(returnSuccessCodes(successChangePass))
         }
       })
       .catch(err => {
@@ -249,16 +294,21 @@ function checkDuplicateEmail(email, id) {
     .then(result => result >= 1 ? true : false)
 }
 
+function convertGetUsers(users) {
+  return Promise.map(
+    users,
+    user => {
+      return convertUserResponse(user);
+    },
+    { concurrency: 5 }
+  );
+};
+
 function convertUserResponse(user) {
   if (!isEmpty(user)) {
     user = user.toJSON();
     user.id = user._id;
-    let permissions = user.permissions;
-    if (!isEmpty(permissions)) {
-      user.permissions = permissions;
-    } else {
-      user.permissions = constants.ROLE.USER;
-    }
+    user.name = `${get(user, 'firstName')} ${get(user, 'lastName')}`
     delete user._id;
     return user;
   } else {
@@ -266,10 +316,30 @@ function convertUserResponse(user) {
   }
 };
 
+function convertPermissions(permissions) {
+  if (!isEmpty(permissions)) {
+    return permissions.map(e => {
+      switch (e) {
+        case '63398d4c-d0e9-4daf-9504-30d32810527e':
+          return constants.ROLE.ADMIN;
+        case '2c53695a-7401-4dc8-979b-e93a5f4e357d':
+          return constants.ROLE.OPERATOR;
+        case '10bf9306-5a92-4acf-bf7b-4cdfd0d19a56':
+          return constants.ROLE.USER;
+        default: return null
+      }
+    })
+  }
+}
+
 function createFindQuery(args) {
   let params = args;
   let q = params.q;
-  let query = {};
+  const query = {
+    '$and': [
+      { deleted: false }
+    ]
+  }
   if (!lodash.isEmpty(q)) {
     q = slugifyString(q);
     query["$and"] = [];
@@ -282,10 +352,6 @@ function createFindQuery(args) {
     });
     query["$and"].push(subQuerySearch);
   }
-  if (!lodash.isArray(query["$and"])) {
-    query["$and"] = [];
-  }
-  query["$and"].push({ 'adminApp.verified': true });
   return query;
 };
 

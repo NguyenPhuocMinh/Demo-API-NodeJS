@@ -5,9 +5,16 @@ const UserService = require('../../services/web-admin-user');
 module.exports = [
   // user register
   {
-    pathName: '/user/registers',
+    pathName: '/users',
     method: 'POST',
     methodName: 'registerUser',
+    serviceName: UserService
+  },
+  // get users
+  {
+    pathName: '/users',
+    method: 'GET',
+    methodName: 'getUsers',
     serviceName: UserService
   },
   // user login
@@ -33,7 +40,7 @@ module.exports = [
   },
   // update user
   {
-    pathName: '/user/updates/:id',
+    pathName: '/user/:id',
     method: 'PUT',
     methodName: 'updateUser',
     serviceName: UserService

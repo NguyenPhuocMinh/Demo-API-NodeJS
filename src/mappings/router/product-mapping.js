@@ -18,17 +18,17 @@ module.exports = [
     serviceName: ProductService
   },
   // get by id product
-  // {
-  //   pathName: '/products/:id',
-  //   method: 'GET_ID',
-  //   methodName: 'getByIdProduct',
-  //   serviceName: ProductService
-  // },
+  {
+    pathName: '/products/:id',
+    method: 'GET_ID',
+    methodName: 'getByIdProduct',
+    serviceName: ProductService
+  },
   // // update product
-  // {
-  //   pathName: '/products/:id',
-  //   method: 'PUT',
-  //   methodName: 'updateProduct',
-  //   serviceName: ProductService
-  // },
+  {
+    pathName: '/products/:id',
+    method: 'PUT',
+    methodName: 'updateProduct',
+    serviceName: ProductService
+  },
 ];
