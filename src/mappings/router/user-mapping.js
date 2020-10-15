@@ -17,6 +17,13 @@ module.exports = [
     methodName: 'getUsers',
     serviceName: UserService
   },
+  // get users by id
+  {
+    pathName: '/users/:id',
+    method: 'GET',
+    methodName: 'getUserById',
+    serviceName: UserService
+  },
   // user login
   {
     pathName: '/user/logins',

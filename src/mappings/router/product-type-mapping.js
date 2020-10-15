@@ -20,7 +20,7 @@ module.exports = [
   // get by id productType
   {
     pathName: '/productTypes/:id',
-    method: 'GET_ID',
+    method: 'GET',
     methodName: 'getByIdProductType',
     serviceName: ProductTypeService
   },

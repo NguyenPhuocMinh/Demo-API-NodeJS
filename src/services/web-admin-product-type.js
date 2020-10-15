@@ -21,7 +21,7 @@ function AccountService() {
   // Create Product Type
   this.createProductType = async function (req, res) {
     const slug = slugifyString(req.body.name);
-    const productType = new Product({
+    const productType = new ProductType({
       name: req.body.name,
       activated: req.body.activated,
       slug: slug,

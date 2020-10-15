@@ -35,7 +35,7 @@ function UserService() {
     const salt = await bcrypt.genSalt(10);
     const hashPassword = await bcrypt.hash(password, salt);
     const permissions = convertPermissions(req.body.permissions);
-    console.log("UserService -> permissions", permissions)
+    const gender = convertGender(req.body.gender);
 
     const user = new User({
       firstName: req.body.firstName,
@@ -43,7 +43,7 @@ function UserService() {
       email: req.body.email,
       password: hashPassword,
       permissions: permissions,
-      gender: req.body.gender,
+      gender: gender,
       createdAt: nowMoment,
       createdBy: 'SYSTEMS',
       updatedAt: nowMoment,
@@ -146,6 +146,17 @@ function UserService() {
       })
       .catch(err => {
         loggingFactory.error('Get user Error', err);
+        return Promise.reject(err);
+      })
+  };
+  // get user by id
+  this.getUserById = function (req, res) {
+    const userId = req.params.id;
+    return User.findById({ _id: userId })
+      .then(user => convertUserResponse(user))
+      .then(result => res.send(result))
+      .catch(err => {
+        loggingFactory.error("Get By Id Error", err);
         return Promise.reject(err);
       })
   };
@@ -308,7 +319,11 @@ function convertUserResponse(user) {
   if (!isEmpty(user)) {
     user = user.toJSON();
     user.id = user._id;
-    user.name = `${get(user, 'firstName')} ${get(user, 'lastName')}`
+    user.name = `${get(user, 'firstName')} ${get(user, 'lastName')}`;
+    const permissions = get(user, 'permissions');
+    user.permissions = convertPermissionsResponse(permissions);
+    const gender = get(user, 'gender');
+    user.gender = convertGenderResponse(gender);
     delete user._id;
     return user;
   } else {
@@ -320,15 +335,55 @@ function convertPermissions(permissions) {
   if (!isEmpty(permissions)) {
     return permissions.map(e => {
       switch (e) {
-        case '63398d4c-d0e9-4daf-9504-30d32810527e':
+        case constants.ROLE.ADMIN:
+          return 'ADMIN';
+        case constants.ROLE.OPERATOR:
+          return 'OPERATOR';
+        case constants.ROLE.USER:
+          return 'USER';
+        default: return null
+      }
+    })
+  }
+};
+
+function convertPermissionsResponse(permissions) {
+  if (!isEmpty(permissions)) {
+    return permissions.map(e => {
+      switch (e) {
+        case 'ADMIN':
           return constants.ROLE.ADMIN;
-        case '2c53695a-7401-4dc8-979b-e93a5f4e357d':
+        case 'OPERATOR':
           return constants.ROLE.OPERATOR;
-        case '10bf9306-5a92-4acf-bf7b-4cdfd0d19a56':
+        case 'USER':
           return constants.ROLE.USER;
         default: return null
       }
     })
+  }
+};
+
+function convertGender(gender) {
+  switch (gender) {
+    case constants.GENDER.MALE:
+      return 'Nam';
+    case constants.GENDER.FEMALE:
+      return 'Nữ';
+    case constants.GENDER.UNKNOWN:
+      return 'Không xác định';
+    default: return null
+  }
+};
+
+function convertGenderResponse(gender) {
+  switch (gender) {
+    case 'Nam':
+      return constants.GENDER.MALE;
+    case 'Nữ':
+      return constants.GENDER.FEMALE;
+    case 'Không xác định':
+      return constants.GENDER.UNKNOWN;
+    default: return null
   }
 }
 

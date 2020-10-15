@@ -2,16 +2,16 @@
 
 module.exports = {
   ROLE: {
-    ADMIN: 'ADMIN',
-    OPERATOR: 'OPERATOR',
-    USER: 'USER'
+    ADMIN: '63398d4c-d0e9-4daf-9504-30d32810527e',
+    OPERATOR: '2c53695a-7401-4dc8-979b-e93a5f4e357d',
+    USER: '10bf9306-5a92-4acf-bf7b-4cdfd0d19a56'
+  },
+  GENDER: {
+    MALE: '0',
+    FEMALE: '1',
+    UNKNOWN: '2'
   },
   TIMEZONE_DEFAULT: 'Asia/Ho_Chi_Minh',
   SKIP_DEFAULT: 0,
   LIMIT_DEFAULT: 25,
-  GENDER_DEFAULT: 'Không xác định',
-  STATUS_PRODUCT: {
-    STOCK: 'b24896c-528a-49c7-afde-b7e0ea7bea22',
-    OUT_OF_STOCK: 'f0969fc4-3930-43b8-a6c2-fc1eefbaecc2'
-  }
 };
