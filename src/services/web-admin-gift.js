@@ -9,30 +9,22 @@ const {
   loggingFactory,
   slugifyString
 } = webServer;
-const Product = require('modeller').ProductModel;
-const constants = require('../utils/constant');
+const Gift = require('modeller').GiftModel;
+const constant = require('../utils/constant');
 const returnCodes = require('../../config/dev/errorCodes');
-const { isEmpty, get } = lodash;
+const { isEmpty } = lodash;
 
-function ProductService() {
-  const timezone = constants.TIMEZONE_DEFAULT;
+function GiftService() {
+  const timezone = constant.TIMEZONE_DEFAULT;
   const nowMoment = moment.tz(timezone).utc();
 
-  // Create Product
-  this.createProduct = async function (req, res) {
+  // Create Gift
+  this.createGift = async function (req, res) {
     const slug = slugifyString(req.body.name);
-    const product = new Product({
+    const gift = new Gift({
       name: req.body.name,
-      weight: req.body.weight,
-      smells: req.body.smells,
-      gifts: req.body.gifts,
-      price: req.body.price,
-      productType: req.body.productType,
-      quantity: req.body.quantity,
-      skin: req.body.skin,
-      status: req.body.status,
-      slug: slug,
       activated: req.body.activated,
+      slug: slug,
       createdAt: nowMoment,
       createdBy: 'SYSTEMS',
       updatedAt: nowMoment,
@@ -42,29 +34,29 @@ function ProductService() {
       .then(duplicate => {
         if (duplicate) {
           loggingFactory.info('duplicate', duplicate);
-          return res.status(400).send(returnCodes('DuplicateSlugProduct'));
+          return res.status(400).send(returnCodes('DuplicateSlugGift'));
         }
-        return Promise.resolve(product)
-          .then(product => convertProductResponse(product))
+        return Promise.resolve(gift)
+          .then(gift => convertGiftResponse(gift))
           .then(result => res.send(result))
-          .then(() => product.save())
+          .then(() => gift.save())
           .catch(err => {
-            loggingFactory.error('Create Product Error:', JSON.stringify(err, null, 2));
+            loggingFactory.error('Create Gift Error:', JSON.stringify(err, null, 2));
             return Promise.reject(err);
           });
       })
   };
-  // Get Products
-  this.getProducts = function (req, res) {
+  // Get Gifts
+  this.getGifts = function (req, res) {
     const params = req.query;
-    const skip = parseInt(params._start) || constants.SKIP_DEFAULT;
-    let limit = parseInt(params._end) || constants.LIMIT_DEFAULT;
+    const skip = parseInt(params._start) || constant.SKIP_DEFAULT;
+    let limit = parseInt(params._end) || constant.LIMIT_DEFAULT;
     limit = limit - skip;
     const query = createFindQuery(params);
     const sort = createSortQuery(params);
 
     const response = {};
-    return Product.find(query, {
+    return Gift.find(query, {
       createdAt: 0,
       createdBy: 0,
       updatedAt: 0,
@@ -74,13 +66,12 @@ function ProductService() {
         sort: sort, skip: skip, limit: limit
       }
     )
-      // .populate('productType', 'name')
-      .then(products => convertGetProducts(products))
+      .then(gifts => convertGetGifts(gifts))
       .then(dataResponse => {
         response.data = dataResponse;
       })
       .then(() => {
-        return Product.countDocuments(query)
+        return Gift.countDocuments(query)
       })
       .then(total => {
         response.total = total;
@@ -93,58 +84,49 @@ function ProductService() {
           .send(response.data)
       })
       .catch(err => {
-        loggingFactory.error('Get account Error', err);
+        loggingFactory.error('Get Gift Error', err);
         return Promise.reject(err);
       })
   };
-  // Get By Id Product
-  this.getByIdProduct = function (req, res) {
-    const productId = req.params.id;
-    return Product
-      .findById({ _id: productId })
-      .then(product => convertProductResponse(product))
+  // Get By Id Gift
+  this.getByIdGift = function (req, res) {
+    const giftId = req.params.id;
+    return Gift.findById({ _id: giftId })
+      .then(gift => convertGiftResponse(gift))
       .then(result => res.send(result))
       .catch(err => {
         loggingFactory.error("Get By Id Error", err);
         return Promise.reject(err);
       })
   };
-  // Update Product
-  this.updateProduct = async function (req, res) {
+  // Update Gift
+  this.updateGift = async function (req, res) {
     const slug = slugifyString(req.body.username)
-    const productId = req.params.id;
+    const giftId = req.params.id;
 
-    return checkDuplicateSlug(slug, productId)
+    return checkDuplicateSlug(slug, giftId)
       .then(duplicate => {
         if (duplicate) {
           if (duplicate) {
             loggingFactory.info('duplicate', duplicate);
-            return res.status(400).send(returnCodes('duplicateSlugProduct'));
+            return res.status(400).send(returnCodes('duplicateGift'));
           }
         }
-        return Product.findByIdAndUpdate(
-          { _id: productId },
+        return Gift.findByIdAndUpdate(
+          { _id: GiftId },
           {
             name: req.body.name,
-            weight: req.body.weight,
-            smells: req.body.smells,
-            gifts: req.body.gifts,
-            price: req.body.price,
-            productType: req.body.productType,
-            quantity: req.body.quantity,
-            skin: req.body.skin,
-            status: req.body.status,
-            slug: slug,
             activated: req.body.activated,
+            slug: slug,
             updatedAt: nowMoment,
             updatedBy: 'SYSTEMS'
           },
           { new: true }
         )
-          .then(product => convertProductResponse(product))
+          .then(gift => convertGiftResponse(gift))
           .then(result => res.send(result))
           .catch(err => {
-            loggingFactory.error("Update Product Error ", err);
+            loggingFactory.error("Update Gift Error ", err);
             return Promise.reject(err);
           })
       })
@@ -152,28 +134,28 @@ function ProductService() {
 };
 
 function checkDuplicateSlug(slug, id) {
-  return Product.countDocuments({
+  return Gift.countDocuments({
     _id: { $ne: id },
     slug: slug,
   }).then(result => result >= 1 ? true : false)
 }
 
-function convertGetProducts(products) {
+function convertGetGifts(gifts) {
   return Promise.map(
-    products,
-    product => {
-      return convertProductResponse(product);
+    gifts,
+    gift => {
+      return convertGiftResponse(gift);
     },
     { concurrency: 5 }
   );
 };
 
-function convertProductResponse(product) {
-  if (!isEmpty(product)) {
-    product = product.toJSON();
-    product.id = product._id;
-    delete product._id;
-    return product;
+function convertGiftResponse(gift) {
+  if (!isEmpty(gift)) {
+    gift = gift.toJSON();
+    gift.id = gift._id;
+    delete gift._id;
+    return gift;
   } else {
     return Promise.resolve();
   }
@@ -218,4 +200,4 @@ function createSortQuery(params) {
   return JSON.parse(jsonStringSort);
 };
 
-module.exports = new ProductService();
+module.exports = new GiftService();

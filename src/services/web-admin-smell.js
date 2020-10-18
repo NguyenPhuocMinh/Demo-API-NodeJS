@@ -9,30 +9,22 @@ const {
   loggingFactory,
   slugifyString
 } = webServer;
-const Product = require('modeller').ProductModel;
-const constants = require('../utils/constant');
+const Smell = require('modeller').SmellModel;
+const constant = require('../utils/constant');
 const returnCodes = require('../../config/dev/errorCodes');
-const { isEmpty, get } = lodash;
+const { isEmpty } = lodash;
 
-function ProductService() {
-  const timezone = constants.TIMEZONE_DEFAULT;
+function SmellService() {
+  const timezone = constant.TIMEZONE_DEFAULT;
   const nowMoment = moment.tz(timezone).utc();
 
-  // Create Product
-  this.createProduct = async function (req, res) {
+  // Create Smell
+  this.createSmell = async function (req, res) {
     const slug = slugifyString(req.body.name);
-    const product = new Product({
+    const smell = new Smell({
       name: req.body.name,
-      weight: req.body.weight,
-      smells: req.body.smells,
-      gifts: req.body.gifts,
-      price: req.body.price,
-      productType: req.body.productType,
-      quantity: req.body.quantity,
-      skin: req.body.skin,
-      status: req.body.status,
-      slug: slug,
       activated: req.body.activated,
+      slug: slug,
       createdAt: nowMoment,
       createdBy: 'SYSTEMS',
       updatedAt: nowMoment,
@@ -42,29 +34,29 @@ function ProductService() {
       .then(duplicate => {
         if (duplicate) {
           loggingFactory.info('duplicate', duplicate);
-          return res.status(400).send(returnCodes('DuplicateSlugProduct'));
+          return res.status(400).send(returnCodes('DuplicateSlugSmell'));
         }
-        return Promise.resolve(product)
-          .then(product => convertProductResponse(product))
+        return Promise.resolve(smell)
+          .then(smell => convertSmellResponse(smell))
           .then(result => res.send(result))
-          .then(() => product.save())
+          .then(() => smell.save())
           .catch(err => {
-            loggingFactory.error('Create Product Error:', JSON.stringify(err, null, 2));
+            loggingFactory.error('Create Smell Error:', JSON.stringify(err, null, 2));
             return Promise.reject(err);
           });
       })
   };
-  // Get Products
-  this.getProducts = function (req, res) {
+  // Get Smells
+  this.getSmells = function (req, res) {
     const params = req.query;
-    const skip = parseInt(params._start) || constants.SKIP_DEFAULT;
-    let limit = parseInt(params._end) || constants.LIMIT_DEFAULT;
+    const skip = parseInt(params._start) || constant.SKIP_DEFAULT;
+    let limit = parseInt(params._end) || constant.LIMIT_DEFAULT;
     limit = limit - skip;
     const query = createFindQuery(params);
     const sort = createSortQuery(params);
 
     const response = {};
-    return Product.find(query, {
+    return Smell.find(query, {
       createdAt: 0,
       createdBy: 0,
       updatedAt: 0,
@@ -74,13 +66,12 @@ function ProductService() {
         sort: sort, skip: skip, limit: limit
       }
     )
-      // .populate('productType', 'name')
-      .then(products => convertGetProducts(products))
+      .then(smells => convertGetSmells(smells))
       .then(dataResponse => {
         response.data = dataResponse;
       })
       .then(() => {
-        return Product.countDocuments(query)
+        return Smell.countDocuments(query)
       })
       .then(total => {
         response.total = total;
@@ -93,58 +84,49 @@ function ProductService() {
           .send(response.data)
       })
       .catch(err => {
-        loggingFactory.error('Get account Error', err);
+        loggingFactory.error('Get Product Type Error', err);
         return Promise.reject(err);
       })
   };
-  // Get By Id Product
-  this.getByIdProduct = function (req, res) {
-    const productId = req.params.id;
-    return Product
-      .findById({ _id: productId })
-      .then(product => convertProductResponse(product))
+  // Get By Id Smell
+  this.getByIdSmell = function (req, res) {
+    const smellId = req.params.id;
+    return Smell.findById({ _id: smellId })
+      .then(smell => convertSmellResponse(smell))
       .then(result => res.send(result))
       .catch(err => {
         loggingFactory.error("Get By Id Error", err);
         return Promise.reject(err);
       })
   };
-  // Update Product
-  this.updateProduct = async function (req, res) {
+  // Update Smell
+  this.updateSmell = async function (req, res) {
     const slug = slugifyString(req.body.username)
-    const productId = req.params.id;
+    const smellId = req.params.id;
 
-    return checkDuplicateSlug(slug, productId)
+    return checkDuplicateSlug(slug, smellId)
       .then(duplicate => {
         if (duplicate) {
           if (duplicate) {
             loggingFactory.info('duplicate', duplicate);
-            return res.status(400).send(returnCodes('duplicateSlugProduct'));
+            return res.status(400).send(returnCodes('duplicateSmell'));
           }
         }
-        return Product.findByIdAndUpdate(
-          { _id: productId },
+        return Smell.findByIdAndUpdate(
+          { _id: SmellId },
           {
             name: req.body.name,
-            weight: req.body.weight,
-            smells: req.body.smells,
-            gifts: req.body.gifts,
-            price: req.body.price,
-            productType: req.body.productType,
-            quantity: req.body.quantity,
-            skin: req.body.skin,
-            status: req.body.status,
-            slug: slug,
             activated: req.body.activated,
+            slug: slug,
             updatedAt: nowMoment,
             updatedBy: 'SYSTEMS'
           },
           { new: true }
         )
-          .then(product => convertProductResponse(product))
+          .then(smell => convertSmellResponse(smell))
           .then(result => res.send(result))
           .catch(err => {
-            loggingFactory.error("Update Product Error ", err);
+            loggingFactory.error("Update Smell Error ", err);
             return Promise.reject(err);
           })
       })
@@ -152,28 +134,28 @@ function ProductService() {
 };
 
 function checkDuplicateSlug(slug, id) {
-  return Product.countDocuments({
+  return Smell.countDocuments({
     _id: { $ne: id },
     slug: slug,
   }).then(result => result >= 1 ? true : false)
 }
 
-function convertGetProducts(products) {
+function convertGetSmells(smells) {
   return Promise.map(
-    products,
-    product => {
-      return convertProductResponse(product);
+    smells,
+    smell => {
+      return convertSmellResponse(smell);
     },
     { concurrency: 5 }
   );
 };
 
-function convertProductResponse(product) {
-  if (!isEmpty(product)) {
-    product = product.toJSON();
-    product.id = product._id;
-    delete product._id;
-    return product;
+function convertSmellResponse(smell) {
+  if (!isEmpty(smell)) {
+    smell = smell.toJSON();
+    smell.id = smell._id;
+    delete smell._id;
+    return smell;
   } else {
     return Promise.resolve();
   }
@@ -218,4 +200,4 @@ function createSortQuery(params) {
   return JSON.parse(jsonStringSort);
 };
 
-module.exports = new ProductService();
+module.exports = new SmellService();

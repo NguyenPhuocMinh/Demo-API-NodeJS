@@ -14,7 +14,7 @@ const constant = require('../utils/constant');
 const returnCodes = require('../../config/dev/errorCodes');
 const { isEmpty, isNil } = lodash;
 
-function AccountService() {
+function ProductTypeService() {
   const timezone = constant.TIMEZONE_DEFAULT;
   const nowMoment = moment.tz(timezone).utc();
 
@@ -200,4 +200,4 @@ function createSortQuery(params) {
   return JSON.parse(jsonStringSort);
 };
 
-module.exports = new AccountService();
+module.exports = new ProductTypeService();

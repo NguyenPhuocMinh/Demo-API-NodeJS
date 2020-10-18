@@ -240,14 +240,14 @@ function UserService() {
     if (!currentPassword) {
       return res
         .status(400)
-      // .send(returnErrorCodes(invalidCurrentPassword));
+        .send(returnCodes('InvalidCurrentPassword'));
     }
     // tạo mật khẩu mới
     const salt = await bcrypt.genSalt(10);
     const newPassword = await bcrypt.hash(req.body.newPassword, salt);
     const verifiedNewPassword = await bcrypt.hash(req.body.verifiedNewPassword, salt);
     if (verifiedNewPassword !== newPassword) {
-      return res.status(400).send(returnErrorCodes(invalidVerifiedNewPassword));
+      return res.status(400).send(returnCodes('InvalidVerifiedNewPassword'));
     }
     const updateUser = User.updateOne({ _id: userId }, {
       password: newPassword,
@@ -258,6 +258,7 @@ function UserService() {
         if (result.ok === 1) {
           res
             .status(200)
+            .send({ message: 'Đổi mật khẩu thành công !' })
         }
       })
       .catch(err => {
