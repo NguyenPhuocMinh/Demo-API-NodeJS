@@ -1,11 +1,13 @@
 'use strict';
-const webServer = require('web-server');
-require('web-server').momentTimezone;
+
+const webServer = require('web-server-node');
+require('web-server-node').momentTimezone;
 const {
   Promise,
   lodash,
   moment,
-  loggingFactory
+  loggingFactory,
+  returnCodes
 } = webServer;
 const User = require("modeller").UserModel;
 const jwt = require('jsonwebtoken');
@@ -13,7 +15,7 @@ const bcrypt = require('bcrypt');
 const constants = require('../utils/constant');
 const data = require('../../config/data/secret');
 const verify = require('../utils/verifyToken');
-const returnCodes = require('../../config/dev/errorCodes');
+const errorCodes = require('../../config/dev/errorCodes');
 const webConfig = require('../../config/dev/webConfig');
 const { isEmpty, get, isArray } = lodash;
 let tokenList = {};
@@ -23,24 +25,24 @@ function UserService() {
   const nowMoment = moment.tz(timezone).utc();
 
   // register user
-  this.registerUser = async function (req, res) {
-    loggingFactory.info(JSON.stringify(req.body));
+  this.registerUser = async function (args) {
+    loggingFactory.info(JSON.stringify(args));
     // Hash Password
     let password = '';
-    if (isEmpty(req.body.password)) {
+    if (isEmpty(args.password)) {
       password = '123';
     } else {
-      password = req.body.password
+      password = args.password
     }
     const salt = await bcrypt.genSalt(10);
     const hashPassword = await bcrypt.hash(password, salt);
-    const permissions = convertPermissions(req.body.permissions);
-    const gender = convertGender(req.body.gender);
+    const permissions = convertPermissions(args.permissions);
+    const gender = convertGender(args.gender);
 
     const user = new User({
-      firstName: req.body.firstName,
-      lastName: req.body.lastName,
-      email: req.body.email,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      email: args.email,
       password: hashPassword,
       permissions: permissions,
       gender: gender,
@@ -49,14 +51,17 @@ function UserService() {
       updatedAt: nowMoment,
       updatedBy: 'SYSTEMS'
     })
-    return checkDuplicateEmail(req.body.email)
+
+    return checkDuplicateEmail(args.email)
       .then(duplicate => {
         if (duplicate) {
-          return res.status(400).send(returnCodes('DuplicateEmailRegister'));
+          return Promise.reject(returnCodes(errorCodes, 'DuplicateEmailRegister'));
         }
         return Promise.resolve(user)
           .then(user => convertUserResponse(user))
-          .then(result => res.send(result))
+          .then(result => {
+            return result;
+          })
           .then(() => user.save())
           .catch(err => {
             loggingFactory.error('Error Register:', JSON.stringify(err, null, 2));
@@ -65,15 +70,15 @@ function UserService() {
       })
   };
   // login user
-  this.loginUser = async function (req, res) {
+  this.loginUser = async function (args) {
     try {
-      const userLogin = await User.findOne({ email: req.body.email })
+      const userLogin = await User.findOne({ email: args.email })
       if (!userLogin) {
-        return res.status(400).send(returnCodes('EmailNotFound'));
+        return Promise.reject(returnCodes(errorCodes, 'EmailNotFound'))
       }
-      const validPass = await bcrypt.compare(req.body.password, userLogin.password);
+      const validPass = await bcrypt.compare(args.password, userLogin.password);
       if (!validPass) {
-        return res.status(400).send(returnCodes('InValidPassword'));
+        return Promise.reject(returnCodes(errorCodes, 'InValidPassword'));
       }
       const token = jwt.sign({ userLogin }, data.secret, {
         expiresIn: data.tokenLife,
@@ -91,26 +96,24 @@ function UserService() {
           { 'permissions': userLogin.permissions },
         ]
       )
-      res
-        .header('X-Access-Token', token)
-        .send({
-          token: token,
-          refreshToken: refreshToken,
-          expiresIn: data.tokenLife,
-          id: userLogin.id,
-          name: userLogin.firstName + " " + userLogin.lastName,
-          permissions: userLogin.permissions,
-          webConfig: webConfig
-        });
+      return {
+        token: token,
+        refreshToken: refreshToken,
+        expiresIn: data.tokenLife,
+        id: userLogin.id,
+        name: userLogin.firstName + " " + userLogin.lastName,
+        permissions: userLogin.permissions,
+        webConfig: webConfig
+      }
     } catch (err) {
+      console.log("err", err)
       loggingFactory.error('Error Login:', JSON.stringify(err, null, 1))
       return Promise.reject(err);
     }
   };
   // get user
-  this.getUsers = function (req, res) {
-    const params = req.query;
-    console.log("this.getUsers -> params", params)
+  this.getUsers = function (args) {
+    const params = args.params;
     const skip = parseInt(params._start) || constants.SKIP_DEFAULT;
     let limit = parseInt(params._end) || constants.LIMIT_DEFAULT;
     limit = limit - skip;
@@ -138,31 +141,25 @@ function UserService() {
         response.total = total;
         return response;
       })
-      .then(() => {
-        res
-          .header("X-Total-Count", response.total)
-          .header("Access-Control-Expose-Headers", "X-Total-Count")
-          .send(response.data)
-      })
       .catch(err => {
         loggingFactory.error('Get user Error', err);
         return Promise.reject(err);
       })
   };
   // get user by id
-  this.getUserById = function (req, res) {
-    const userId = req.params.id;
+  this.getUserById = function (args) {
+    console.log("this.getUserById -> args", args)
+    const userId = args.id;
     return User.findById({ _id: userId })
       .then(user => convertUserResponse(user))
-      .then(result => res.send(result))
       .catch(err => {
         loggingFactory.error("Get By Id Error", err);
         return Promise.reject(err);
       })
   };
   // refresh token
-  this.refreshTokenHandler = async function (req, res) {
-    const { refreshToken } = req.body;
+  this.refreshTokenHandler = async function (args) {
+    const { refreshToken } = args;
     try {
       // Kiểm tra mã Refresh token
       await verify.verifyJwtToken(refreshToken, data.refreshTokenSecret);
@@ -184,16 +181,15 @@ function UserService() {
           { 'webConfigs': webConfigs }
         ]
       )
-      res
-        .header('X-Access-Token', token)
-        .send({
-          token: token,
-          id: userLogin.id,
-          refreshToken: refreshTokenHandle,
-          expiresIn: data.tokenLife,
-          permissions: userLogin.permissions,
-          // webConfigs: webConfigs
-        })
+      return {
+        token: token,
+        refreshToken: refreshTokenHandle,
+        expiresIn: data.tokenLife,
+        id: userLogin.id,
+        name: userLogin.firstName + " " + userLogin.lastName,
+        permissions: userLogin.permissions,
+        webConfig: webConfig
+      }
     } catch (err) {
       loggingFactory.error('Refresh Token Error:', err);
       res.status(403).json({
@@ -228,37 +224,33 @@ function UserService() {
     }
   };
   // change password
-  this.changePassword = async function (req, res) {
-    let userId = req.params.id;
+  this.changePassword = async function (args) {
+    let userId = args.id;
     // tìm password trong database
     const user = await User.findOne({ _id: userId }, {
       password: 1
     })
     const userPassword = lodash.get(user, 'password');
     // lấy băm mật khẩu trong database
-    const currentPassword = await bcrypt.compare(req.body.currentPassword, userPassword);
+    const currentPassword = await bcrypt.compare(args.currentPassword, userPassword);
     if (!currentPassword) {
-      return res
-        .status(400)
-        .send(returnCodes('InvalidCurrentPassword'));
+      return Promise.reject(returnCodes(errorCodes, 'InvalidCurrentPassword'));
     }
     // tạo mật khẩu mới
     const salt = await bcrypt.genSalt(10);
-    const newPassword = await bcrypt.hash(req.body.newPassword, salt);
-    const verifiedNewPassword = await bcrypt.hash(req.body.verifiedNewPassword, salt);
+    const newPassword = await bcrypt.hash(args.newPassword, salt);
+    const verifiedNewPassword = await bcrypt.hash(args.verifiedNewPassword, salt);
     if (verifiedNewPassword !== newPassword) {
-      return res.status(400).send(returnCodes('InvalidVerifiedNewPassword'));
+      return Promise.reject(returnCodes(errorCodes, 'InvalidVerifiedNewPassword'));
     }
     const updateUser = User.updateOne({ _id: userId }, {
       password: newPassword,
       verifiedPassword: verifiedNewPassword
     }, { new: true })
-    updateUser
+    return Promise.resolve(updateUser)
       .then(result => {
         if (result.ok === 1) {
-          res
-            .status(200)
-            .send({ message: 'Đổi mật khẩu thành công !' })
+          return { message: 'Đổi mật khẩu thành công !' }
         }
       })
       .catch(err => {
@@ -267,29 +259,28 @@ function UserService() {
       })
   };
   // update user
-  this.updateUser = function (req, res) {
-    const userId = req.params.id;
-    return checkDuplicateEmail(req.body.email, userId)
+  this.updateUser = function (args) {
+    const userId = args.id;
+    return checkDuplicateEmail(args.email, userId)
       .then(duplicate => {
         if (duplicate) {
-          return res.status(400).send(returnCodes('DuplicateEmailRegister'));
+          return Promise.reject(returnCodes(errorCodes, 'DuplicateEmailRegister'));
         }
         return User.findByIdAndUpdate(
           { _id: userId },
           {
-            firstName: req.body.firstName,
-            lastName: req.body.lastName,
-            email: req.body.email,
-            gender: req.body.gender,
-            avatar: req.body.avatar,
-            permissions: req.body.permissions,
+            firstName: args.firstName,
+            lastName: args.lastName,
+            email: args.email,
+            gender: args.gender,
+            avatar: args.avatar,
+            permissions: args.permissions,
             updatedAt: nowMoment,
             updatedBy: 'SYSTEMS'
           },
           { new: true }
         )
           .then(user => convertUserResponse(user))
-          .then(result => res.send(result))
           .catch(err => {
             loggingFactory.error("Update User Error ", err);
             return Promise.reject(err);

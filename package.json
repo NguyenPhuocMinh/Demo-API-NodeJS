@@ -1,5 +1,5 @@
 {
-  "name": "acc-api",
+  "name": "demo-api",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -17,7 +17,7 @@
     "bcrypt": "^5.0.0",
     "jsonwebtoken": "^8.5.1",
     "modeller": "git+https://github.com/NguyenPhuocMinh/Modeller.git#95060418f8d3d2b0437012bb651691fe2936f653",
-    "web-server": "git+https://github.com/NguyenPhuocMinh/Web-Server.git#553728b495d52214ffd631c8284f464ddf43e372"
+    "web-server-node": "^1.0.7"
   },
   "engines": {
     "node": "14.x"

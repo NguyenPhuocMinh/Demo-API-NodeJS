@@ -1,6 +1,6 @@
 'use strict';
 
-const server = require('web-server');
+const server = require('web-server-node');
 const mappings = require('./src/mappings/index');
 const sandbox = require('./config/dev/sandbox');
 

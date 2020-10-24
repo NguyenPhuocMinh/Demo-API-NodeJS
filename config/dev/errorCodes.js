@@ -1,8 +1,5 @@
 'use strict';
 
-const lodash = require('web-server').lodash;
-const { get, eq } = lodash;
-
 const errorCodes = [
   {
     nameCode: 'InvalidVerifiedPassword',
@@ -26,7 +23,7 @@ const errorCodes = [
     nameCode: 'EmailNotFound',
     messageCode: 'Không tìm thấy email',
     returnCode: 4,
-    statusCode: 400,
+    statusCode: 404,
   },
   {
     nameCode: 'InValidPassword',
@@ -66,21 +63,4 @@ const errorCodes = [
   },
 ]
 
-const returnCodes = (name = '') => {
-  const error = {};
-  errorCodes.map(errorCode => {
-    const nameCode = get(errorCode, 'nameCode');
-    const messageCode = get(errorCode, 'messageCode');
-    const returnCode = get(errorCode, 'returnCode');
-    const statusCode = get(errorCode, 'statusCode');
-    if (eq(nameCode, name)) {
-      error.name = nameCode;
-      error.message = messageCode;
-      error.returnCode = returnCode;
-      error.statusCode = statusCode;
-    }
-  })
-  return error;
-}
-
-module.exports = returnCodes;
+module.exports = errorCodes;
