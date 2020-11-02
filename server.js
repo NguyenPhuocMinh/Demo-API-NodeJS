@@ -1,12 +1,12 @@
 'use strict';
 
-const server = require('web-server-node');
+const server = require('winrow');
 const mappings = require('./src/mappings/index');
 const sandbox = require('./config/dev/sandbox');
 
 if (require.main === module) {
-  server.mappingApi(mappings);
   server.start();
+  server.mappingApi(mappings);
   server.repository(sandbox);
   const stopped = function () {
     server.stop();

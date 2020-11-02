@@ -1,8 +1,13 @@
 'use strict';
 
-const lodash = require('web-server-node').lodash;
+const webServer = require('winrow');
+const {
+  lodash,
+  validator
+} = webServer;
 const { get } = lodash;
 const UserService = require('../../services/web-admin-user');
+const { userLoginSchema } = require('../../utils/schema');
 
 module.exports = [
   // user register
@@ -19,10 +24,10 @@ module.exports = [
       }
     },
     output: {
-      transform: function (res, opts) {
-        return (
-          res.send(opts)
-        )
+      transform: function (response) {
+        return {
+          body: response
+        }
       }
     }
   },
@@ -40,13 +45,14 @@ module.exports = [
       }
     },
     output: {
-      transform: function (res, opts) {
-        return (
-          res
-            .header('X-Total-Count', get(opts, 'total'))
-            .header("Access-Control-Expose-Headers", "X-Total-Count")
-            .send(get(opts, 'data'))
-        )
+      transform: function (response) {
+        return {
+          headers: {
+            'X-Total-Count': response.total,
+            'Access-Control-Expose-Headers': 'X-Total-Count'
+          },
+          body: response.data
+        }
       }
     }
   },
@@ -64,8 +70,10 @@ module.exports = [
       }
     },
     output: {
-      transform: function (res, opts) {
-        res.send(opts)
+      transform: function (response) {
+        return {
+          body: response
+        }
       }
     }
   },
@@ -77,6 +85,10 @@ module.exports = [
     serviceName: UserService,
     input: {
       transform: function (req) {
+        const { valid, errors } = validator(userLoginSchema, req.body);
+        if (!valid) {
+          return Promise.reject(errors);
+        }
         return {
           email: req.body.email,
           password: req.body.password
@@ -84,12 +96,13 @@ module.exports = [
       }
     },
     output: {
-      transform: function (res, opts) {
-        return (
-          res
-            .header('X-AccessToken', get(opts, 'token'))
-            .send(opts)
-        )
+      transform: function (response) {
+        return {
+          headers: {
+            'X-AccessToken': get(response, 'token')
+          },
+          body: response
+        }
       }
     }
   },
@@ -107,12 +120,13 @@ module.exports = [
       }
     },
     output: {
-      transform: function (res, opts) {
-        return (
-          res
-            .header('X-AccessToken', get(opts, 'token'))
-            .send(opts)
-        )
+      transform: function (response) {
+        return {
+          headers: {
+            'X-AccessToken': get(response, 'token')
+          },
+          body: response
+        }
       }
     }
   },
@@ -133,12 +147,10 @@ module.exports = [
       }
     },
     output: {
-      transform: function (res, opts) {
-        return (
-          res
-            .status(200)
-            .send(opts)
-        )
+      transform: function (response) {
+        return {
+          body: response
+        }
       }
     }
   },
@@ -162,17 +174,11 @@ module.exports = [
       }
     },
     output: {
-      transform: function (res, opts) {
-        return (
-          res.send(opts)
-        )
+      transform: function (response) {
+        return {
+          body: response
+        }
       }
     }
   },
-  {
-    pathName: 'user/checkToken',
-    method: 'POST',
-    methodName: 'tokenCheckMiddleware',
-    serviceName: UserService
-  }
 ]

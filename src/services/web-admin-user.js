@@ -1,15 +1,14 @@
 'use strict';
 
-const webServer = require('web-server-node');
-require('web-server-node').momentTimezone;
+const webServer = require('winrow');
+require('winrow').momentTimezone;
 const {
   Promise,
   lodash,
   moment,
-  loggingFactory,
-  returnCodes
+  returnCodes,
+  dataMongoose
 } = webServer;
-const User = require("modeller").UserModel;
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const constants = require('../utils/constant');
@@ -25,8 +24,14 @@ function UserService() {
   const nowMoment = moment.tz(timezone).utc();
 
   // register user
-  this.registerUser = async function (args) {
+  this.registerUser = async function (args, opts) {
+    const { loggingFactory } = opts;
     loggingFactory.info(JSON.stringify(args));
+
+    args.createdAt = nowMoment;
+    args.createdBy = 'SYSTEMS';
+    args.updatedAt = nowMoment;
+    args.updatedBy = 'SYSTEMS';
     // Hash Password
     let password = '';
     if (isEmpty(args.password)) {
@@ -35,44 +40,37 @@ function UserService() {
       password = args.password
     }
     const salt = await bcrypt.genSalt(10);
-    const hashPassword = await bcrypt.hash(password, salt);
+    args.password = await bcrypt.hash(password, salt);
     const permissions = convertPermissions(args.permissions);
-    const gender = convertGender(args.gender);
-
-    const user = new User({
-      firstName: args.firstName,
-      lastName: args.lastName,
-      email: args.email,
-      password: hashPassword,
-      permissions: permissions,
-      gender: gender,
-      createdAt: nowMoment,
-      createdBy: 'SYSTEMS',
-      updatedAt: nowMoment,
-      updatedBy: 'SYSTEMS'
-    })
+    args.permissions = permissions;
+    args.gender = convertGender(args.gender);
 
     return checkDuplicateEmail(args.email)
       .then(duplicate => {
         if (duplicate) {
           return Promise.reject(returnCodes(errorCodes, 'DuplicateEmailRegister'));
         }
-        return Promise.resolve(user)
+        return dataMongoose.create({
+          type: 'UserModel',
+          data: args
+        })
           .then(user => convertUserResponse(user))
-          .then(result => {
-            return result;
-          })
-          .then(() => user.save())
           .catch(err => {
-            loggingFactory.error('Error Register:', JSON.stringify(err, null, 2));
             return Promise.reject(err);
-          });
+          })
       })
   };
   // login user
-  this.loginUser = async function (args) {
+  this.loginUser = async function (args, opts) {
+    const { loggingFactory, requestId } = opts;
     try {
-      const userLogin = await User.findOne({ email: args.email })
+      loggingFactory.debug('User login begin', { requestId: `${requestId}` });
+      const userLogin = await dataMongoose.findOne({
+        type: 'UserModel',
+        filter: {
+          email: args.email
+        }
+      })
       if (!userLogin) {
         return Promise.reject(returnCodes(errorCodes, 'EmailNotFound'))
       }
@@ -87,15 +85,7 @@ function UserService() {
         expiresIn: data.refreshTokenLife
       })
       tokenList[refreshToken] = userLogin;
-      loggingFactory.silly('User Login Info:',
-        [
-          { 'userId': userLogin.id },
-          { 'refreshToken': refreshToken },
-          { 'expiresIn': data.tokenLife },
-          { 'name': userLogin.firstName + " " + userLogin.lastName },
-          { 'permissions': userLogin.permissions },
-        ]
-      )
+      loggingFactory.debug('User login end', { requestId: `${requestId}` });
       return {
         token: token,
         refreshToken: refreshToken,
@@ -112,7 +102,8 @@ function UserService() {
     }
   };
   // get user
-  this.getUsers = function (args) {
+  this.getUsers = function (args, opts) {
+    const { loggingFactory } = opts;
     const params = args.params;
     const skip = parseInt(params._start) || constants.SKIP_DEFAULT;
     let limit = parseInt(params._end) || constants.LIMIT_DEFAULT;
@@ -121,21 +112,30 @@ function UserService() {
     const sort = createSortQuery(params);
 
     const response = {};
-    return User.find(query, {
-      createdAt: 0,
-      createdBy: 0,
-      updatedAt: 0,
-      updatedBy: 0
-    },
-      {
-        sort: sort, skip: skip, limit: limit
-      })
+    return dataMongoose.find({
+      type: 'UserModel',
+      filter: query,
+      projection: {
+        createdAt: 0,
+        createdBy: 0,
+        updatedAt: 0,
+        updatedBy: 0
+      },
+      options: {
+        sort: sort,
+        skip: skip,
+        limit: limit
+      }
+    })
       .then(users => convertGetUsers(users))
       .then(dataResponse => {
         response.data = dataResponse;
       })
       .then(() => {
-        return User.countDocuments(query)
+        return dataMongoose.count({
+          type: 'UserModel',
+          filter: query
+        })
       })
       .then(total => {
         response.total = total;
@@ -147,10 +147,13 @@ function UserService() {
       })
   };
   // get user by id
-  this.getUserById = function (args) {
-    console.log("this.getUserById -> args", args)
+  this.getUserById = function (args, opts) {
+    const { loggingFactory } = opts;
     const userId = args.id;
-    return User.findById({ _id: userId })
+    return dataMongoose.get({
+      type: 'UserModel',
+      id: userId
+    })
       .then(user => convertUserResponse(user))
       .catch(err => {
         loggingFactory.error("Get By Id Error", err);
@@ -158,7 +161,8 @@ function UserService() {
       })
   };
   // refresh token
-  this.refreshTokenHandler = async function (args) {
+  this.refreshTokenHandler = async function (args, opts) {
+    const { loggingFactory } = opts;
     const { refreshToken } = args;
     try {
       // Kiểm tra mã Refresh token
@@ -197,38 +201,17 @@ function UserService() {
       });
     }
   };
-  // check token
-  this.tokenCheckMiddleware = async function (req, res, next) {
-    // Lấy thông tin mã token được đính kèm trong request
-    const token = req.body.token || req.query.token || req.headers['x-access-token'];
-    // decode token
-    if (token) {
-      // Xác thực mã token và kiểm tra thời gian hết hạn của mã
-      try {
-        const decoded = await verify.verifyJwtToken(token, data.secret);
-        // Lưu thông tin giã mã được vào đối tượng req, dùng cho các xử lý ở sau
-        req.decoded = decoded;
-        next();
-      } catch (err) {
-        loggingFactory.error("Hết hạn token:", err);
-        console.error(err);
-        return res.status(401).json({
-          message: 'Token bị hết hạn',
-        });
-      }
-    } else {
-      // Không tìm thấy token trong request
-      return res.status(403).send({
-        message: 'Không tìm thấy token',
-      });
-    }
-  };
   // change password
-  this.changePassword = async function (args) {
+  this.changePassword = async function (args, opts) {
+    const { loggingFactory } = opts;
     let userId = args.id;
     // tìm password trong database
-    const user = await User.findOne({ _id: userId }, {
-      password: 1
+    const user = await dataMongoose.findOne({
+      type: 'UserModel',
+      filter: { _id: userId },
+      projection: {
+        password: 1
+      }
     })
     const userPassword = lodash.get(user, 'password');
     // lấy băm mật khẩu trong database
@@ -243,10 +226,14 @@ function UserService() {
     if (verifiedNewPassword !== newPassword) {
       return Promise.reject(returnCodes(errorCodes, 'InvalidVerifiedNewPassword'));
     }
-    const updateUser = User.updateOne({ _id: userId }, {
-      password: newPassword,
-      verifiedPassword: verifiedNewPassword
-    }, { new: true })
+    const updateUser = await dataMongoose.updateOne({
+      type: 'UserModel',
+      id: userId,
+      data: {
+        password: newPassword,
+        verifiedNewPassword: verifiedNewPassword
+      }
+    })
     return Promise.resolve(updateUser)
       .then(result => {
         if (result.ok === 1) {
@@ -259,27 +246,22 @@ function UserService() {
       })
   };
   // update user
-  this.updateUser = function (args) {
+  this.updateUser = function (args, opts) {
+    const { loggingFactory } = opts;
     const userId = args.id;
+    args.updatedAt = nowMoment;
+    args.updatedBy = 'SYSTEMS';
+
     return checkDuplicateEmail(args.email, userId)
       .then(duplicate => {
         if (duplicate) {
           return Promise.reject(returnCodes(errorCodes, 'DuplicateEmailRegister'));
         }
-        return User.findByIdAndUpdate(
-          { _id: userId },
-          {
-            firstName: args.firstName,
-            lastName: args.lastName,
-            email: args.email,
-            gender: args.gender,
-            avatar: args.avatar,
-            permissions: args.permissions,
-            updatedAt: nowMoment,
-            updatedBy: 'SYSTEMS'
-          },
-          { new: true }
-        )
+        return dataMongoose.update({
+          type: 'UserModel',
+          id: userId,
+          data: args
+        })
           .then(user => convertUserResponse(user))
           .catch(err => {
             loggingFactory.error("Update User Error ", err);
@@ -290,9 +272,12 @@ function UserService() {
 };
 
 function checkDuplicateEmail(email, id) {
-  return User.countDocuments({
-    _id: { $ne: id },
-    email: email
+  return dataMongoose.count({
+    type: 'UserModel',
+    filter: {
+      _id: { $ne: id },
+      email: email
+    }
   })
     .then(result => result >= 1 ? true : false)
 }

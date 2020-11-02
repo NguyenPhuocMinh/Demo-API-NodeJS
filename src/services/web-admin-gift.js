@@ -1,7 +1,7 @@
 'use strict';
 
-const webServer = require('web-server-node');
-require('web-server-node').momentTimezone;
+const webServer = require('winrow');
+require('winrow').momentTimezone;
 const {
   Promise,
   lodash,
