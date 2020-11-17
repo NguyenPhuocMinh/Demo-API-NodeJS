@@ -19,7 +19,11 @@ module.exports = [
     input: {
       transform: function (req) {
         return {
-          ...req.body
+          firstName: req.body.firstName,
+          lastName: req.body.lastName,
+          email: req.body.email,
+          gender: req.body.gender,
+          permissions: req.body.permissions
         }
       }
     },

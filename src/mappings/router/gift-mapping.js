@@ -1,5 +1,7 @@
 'use strict';
 
+const winrow = require('winrow');
+const { slugifyString } = winrow;
 const GiftService = require('../../services/web-admin-gift');
 
 module.exports = [
@@ -8,7 +10,24 @@ module.exports = [
     pathName: '/gifts',
     method: 'POST',
     methodName: 'createGift',
-    serviceName: GiftService
+    serviceName: GiftService,
+    input: {
+      transform: function (req) {
+        const name = req.body.name;
+        return {
+          name: req.body.name,
+          activated: req.body.activated,
+          slug: slugifyString(name),
+        }
+      }
+    },
+    output : {
+      transform : function(response) {
+        return {
+          body : response
+        }
+      }
+    }
   },
   // get gifts
   {

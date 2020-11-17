@@ -1,17 +1,18 @@
 'use strict';
 
-const webServer = require('winrow');
+const winrow = require('winrow');
 require('winrow').momentTimezone;
 const {
   Promise,
   lodash,
   moment,
-  loggingFactory,
-  slugifyString
-} = webServer;
+  slugifyString,
+  returnCodes
+} = winrow;
+const dataStore = require('winrow-repository').dataStore;
 const ProductType = require('modeller').ProductTypeModel;
 const constant = require('../utils/constant');
-const returnCodes = require('../../config/dev/errorCodes');
+const errorCodes = require('../../config/dev/errorCodes');
 const { isEmpty, isNil } = lodash;
 
 function ProductTypeService() {
@@ -19,36 +20,34 @@ function ProductTypeService() {
   const nowMoment = moment.tz(timezone).utc();
 
   // Create Product Type
-  this.createProductType = async function (req, res) {
-    const slug = slugifyString(req.body.name);
-    const productType = new ProductType({
-      name: req.body.name,
-      activated: req.body.activated,
-      slug: slug,
-      createdAt: nowMoment,
-      createdBy: 'SYSTEMS',
-      updatedAt: nowMoment,
-      updatedBy: 'SYSTEMS'
-    })
-    return checkDuplicateSlug(slug)
+  this.createProductType = async function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+
+    args.createdAt = nowMoment;
+    args.createdBy = 'SYSTEMS';
+    args.updatedAt = nowMoment;
+    args.updatedBy = 'SYSTEMS';
+
+    return checkDuplicateSlug(args.slug)
       .then(duplicate => {
         if (duplicate) {
-          loggingFactory.info('duplicate', duplicate);
-          return res.status(400).send(returnCodes('DuplicateSlugProductType'));
+          return Promise.reject(returnCodes(errorCodes, 'DuplicateSlugProductType'));
         }
-        return Promise.resolve(productType)
+        return dataStore.create({
+          type: 'ProductTypeModel',
+          data: args
+        })
           .then(productType => convertProductTypeResponse(productType))
-          .then(result => res.send(result))
-          .then(() => productType.save())
           .catch(err => {
-            loggingFactory.error('Create Product Type Error:', JSON.stringify(err, null, 2));
+            loggingFactory.error(`Create Product Type Error: ${err}`, { requestId: `${requestId}` });
             return Promise.reject(err);
           });
       })
   };
   // Get productTypes
-  this.getProductTypes = function (req, res) {
-    const params = req.query;
+  this.getProductTypes = function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+    const params = args.params;
     const skip = parseInt(params._start) || constant.SKIP_DEFAULT;
     let limit = parseInt(params._end) || constant.LIMIT_DEFAULT;
     limit = limit - skip;
@@ -56,77 +55,77 @@ function ProductTypeService() {
     const sort = createSortQuery(params);
 
     const response = {};
-    return ProductType.find(query, {
-      createdAt: 0,
-      createdBy: 0,
-      updatedAt: 0,
-      updatedBy: 0
-    },
-      {
-        sort: sort, skip: skip, limit: limit
+    return dataStore.find({
+      type: 'ProductTypeModel',
+      filter: query,
+      projections: {
+        createdAt: 0,
+        createdBy: 0,
+        updatedAt: 0,
+        updatedBy: 0
+      },
+      options: {
+        sort: sort,
+        skip: skip,
+        limit: limit
       }
-    )
+    })
       .then(productTypes => convertGetProductTypes(productTypes))
       .then(dataResponse => {
         response.data = dataResponse;
       })
       .then(() => {
-        return ProductType.countDocuments(query)
+        return dataStore.count({
+          type: 'ProductTypeModel',
+          filter: query
+        })
       })
       .then(total => {
         response.total = total;
         return response;
       })
-      .then(() => {
-        res
-          .header("X-Total-Count", response.total)
-          .header("Access-Control-Expose-Headers", "X-Total-Count")
-          .send(response.data)
-      })
       .catch(err => {
-        loggingFactory.error('Get Product Type Error', err);
+        loggingFactory.error(`Get Product Type Error : ${err}`, { requestId: requestId });
         return Promise.reject(err);
       })
   };
   // Get By Id ProductType
-  this.getByIdProductType = function (req, res) {
-    const productTypeId = req.params.id;
-    return ProductType.findById({ _id: productTypeId })
+  this.getByIdProductType = function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+    const productTypeId = args.id;
+    return dataStore.get({
+      type: 'ProductTypeModel',
+      id: productTypeId
+    })
       .then(ProductType => convertProductTypeResponse(ProductType))
-      .then(result => res.send(result))
       .catch(err => {
-        loggingFactory.error("Get By Id Error", err);
+        loggingFactory.error(`Get By Id Error : ${err}`, { requestId: `${requestId}` });
         return Promise.reject(err);
       })
   };
   // Update ProductType
-  this.updateProductType = async function (req, res) {
-    const slug = slugifyString(req.body.username)
-    const productTypeId = req.params.id;
+  this.updateProductType = async function (args, opts) {
+    const { loggingFactory, requestId } = opts;
 
-    return checkDuplicateSlug(slug, productTypeId)
+    args.updatedAt = nowMoment;
+    args.updatedBy = 'SYSTEMS';
+
+    const productTypeId = args.id;
+    return checkDuplicateSlug(args.slug, productTypeId)
       .then(duplicate => {
         if (duplicate) {
           if (duplicate) {
-            loggingFactory.info('duplicate', duplicate);
-            return res.status(400).send(returnCodes('duplicateProductType'));
+            return Promise.reject(returnCodes(errorCodes, 'DuplicateProductType'));
           }
         }
-        return ProductType.findByIdAndUpdate(
-          { _id: productTypeId },
-          {
-            name: req.body.name,
-            activated: req.body.activated,
-            slug: slug,
-            updatedAt: nowMoment,
-            updatedBy: 'SYSTEMS'
-          },
-          { new: true }
-        )
+        return dataStore.update({
+          type: 'ProductTypeModel',
+          id: productTypeId,
+          data: args
+        })
           .then(productType => convertProductTypeResponse(productType))
-          .then(result => res.send(result))
           .catch(err => {
-            loggingFactory.error("Update Product Type Error ", err);
+            loggingFactory.error(`Update Product Type Error : ${err}`, { requestId: `${requestId}` });
             return Promise.reject(err);
           })
       })
@@ -134,9 +133,12 @@ function ProductTypeService() {
 };
 
 function checkDuplicateSlug(slug, id) {
-  return ProductType.countDocuments({
-    _id: { $ne: id },
-    slug: slug,
+  return dataStore.count({
+    type: 'ProductTypeModel',
+    filter: {
+      _id: { $ne: id },
+      slug: slug,
+    }
   }).then(result => result >= 1 ? true : false)
 }
 

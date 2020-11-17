@@ -1,15 +1,17 @@
 'use strict';
 
-const server = require('winrow');
-const mappings = require('./src/mappings/index');
+const winrow = require('winrow');
+const repository = require('winrow-repository');
+const transform = require('winrow-transform');
 const sandbox = require('./config/dev/sandbox');
 
 if (require.main === module) {
-  server.start();
-  server.mappingApi(mappings);
-  server.repository(sandbox);
+  winrow.start(sandbox);
+  repository.connect(sandbox);
+  transform.mapping(sandbox);
   const stopped = function () {
-    server.stop();
+    winrow.stop();
+    repository.disconnect(sandbox);
   };
   process.on('SIGINT', stopped);
   process.on('SIGQUIT', stopped);

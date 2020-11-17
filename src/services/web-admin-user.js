@@ -1,14 +1,14 @@
 'use strict';
 
-const webServer = require('winrow');
+const winrow = require('winrow');
 require('winrow').momentTimezone;
 const {
   Promise,
   lodash,
   moment,
   returnCodes,
-  dataMongoose
-} = webServer;
+} = winrow;
+const dataStore = require('winrow-repository').dataStore;
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const constants = require('../utils/constant');
@@ -16,7 +16,7 @@ const data = require('../../config/data/secret');
 const verify = require('../utils/verifyToken');
 const errorCodes = require('../../config/dev/errorCodes');
 const webConfig = require('../../config/dev/webConfig');
-const { isEmpty, get, isArray } = lodash;
+const { isEmpty, get } = lodash;
 let tokenList = {};
 
 function UserService() {
@@ -50,7 +50,7 @@ function UserService() {
         if (duplicate) {
           return Promise.reject(returnCodes(errorCodes, 'DuplicateEmailRegister'));
         }
-        return dataMongoose.create({
+        return dataStore.create({
           type: 'UserModel',
           data: args
         })
@@ -65,7 +65,7 @@ function UserService() {
     const { loggingFactory, requestId } = opts;
     try {
       loggingFactory.debug('User login begin', { requestId: `${requestId}` });
-      const userLogin = await dataMongoose.findOne({
+      const userLogin = await dataStore.findOne({
         type: 'UserModel',
         filter: {
           email: args.email
@@ -112,7 +112,7 @@ function UserService() {
     const sort = createSortQuery(params);
 
     const response = {};
-    return dataMongoose.find({
+    return dataStore.find({
       type: 'UserModel',
       filter: query,
       projection: {
@@ -132,7 +132,7 @@ function UserService() {
         response.data = dataResponse;
       })
       .then(() => {
-        return dataMongoose.count({
+        return dataStore.count({
           type: 'UserModel',
           filter: query
         })
@@ -150,7 +150,7 @@ function UserService() {
   this.getUserById = function (args, opts) {
     const { loggingFactory } = opts;
     const userId = args.id;
-    return dataMongoose.get({
+    return dataStore.get({
       type: 'UserModel',
       id: userId
     })
@@ -206,7 +206,7 @@ function UserService() {
     const { loggingFactory } = opts;
     let userId = args.id;
     // tìm password trong database
-    const user = await dataMongoose.findOne({
+    const user = await dataStore.findOne({
       type: 'UserModel',
       filter: { _id: userId },
       projection: {
@@ -226,7 +226,7 @@ function UserService() {
     if (verifiedNewPassword !== newPassword) {
       return Promise.reject(returnCodes(errorCodes, 'InvalidVerifiedNewPassword'));
     }
-    const updateUser = await dataMongoose.updateOne({
+    const updateUser = await dataStore.updateOne({
       type: 'UserModel',
       id: userId,
       data: {
@@ -257,7 +257,7 @@ function UserService() {
         if (duplicate) {
           return Promise.reject(returnCodes(errorCodes, 'DuplicateEmailRegister'));
         }
-        return dataMongoose.update({
+        return dataStore.update({
           type: 'UserModel',
           id: userId,
           data: args
@@ -272,7 +272,7 @@ function UserService() {
 };
 
 function checkDuplicateEmail(email, id) {
-  return dataMongoose.count({
+  return dataStore.count({
     type: 'UserModel',
     filter: {
       _id: { $ne: id },

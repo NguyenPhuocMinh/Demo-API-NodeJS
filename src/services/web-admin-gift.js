@@ -1,17 +1,18 @@
 'use strict';
 
-const webServer = require('winrow');
+const winrow = require('winrow');
 require('winrow').momentTimezone;
 const {
   Promise,
   lodash,
   moment,
-  loggingFactory,
-  slugifyString
-} = webServer;
+  slugifyString,
+  returnCodes
+} = winrow;
+const dataStore = require('winrow-repository').dataStore;
 const Gift = require('modeller').GiftModel;
 const constant = require('../utils/constant');
-const returnCodes = require('../../config/dev/errorCodes');
+const errorCodes = require('../../config/dev/errorCodes');
 const { isEmpty } = lodash;
 
 function GiftService() {
@@ -19,29 +20,26 @@ function GiftService() {
   const nowMoment = moment.tz(timezone).utc();
 
   // Create Gift
-  this.createGift = async function (req, res) {
-    const slug = slugifyString(req.body.name);
-    const gift = new Gift({
-      name: req.body.name,
-      activated: req.body.activated,
-      slug: slug,
-      createdAt: nowMoment,
-      createdBy: 'SYSTEMS',
-      updatedAt: nowMoment,
-      updatedBy: 'SYSTEMS'
-    })
-    return checkDuplicateSlug(slug)
+  this.createGift = async function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+
+    args.createdAt = nowMoment;
+    args.createdBy = 'SYSTEMS';
+    args.updatedAt = nowMoment;
+    args.updatedBy = 'SYSTEMS';
+
+    return checkDuplicateSlug(args.slug)
       .then(duplicate => {
         if (duplicate) {
-          loggingFactory.info('duplicate', duplicate);
-          return res.status(400).send(returnCodes('DuplicateSlugGift'));
+          return Promise.reject(returnCodes(errorCodes, 'DuplicateSlugGift'));
         }
-        return Promise.resolve(gift)
+        return dataStore.create({
+          type: 'GiftModel',
+          data: args
+        })
           .then(gift => convertGiftResponse(gift))
-          .then(result => res.send(result))
-          .then(() => gift.save())
           .catch(err => {
-            loggingFactory.error('Create Gift Error:', JSON.stringify(err, null, 2));
+            loggingFactory.error(`Create Gift Error: ${err}`, { requestId: `${requestId}` });
             return Promise.reject(err);
           });
       })
