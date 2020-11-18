@@ -12,21 +12,16 @@ const {
 const dataStore = require('winrow-repository').dataStore;
 const constant = require('../utils/constant');
 const errorCodes = require('../../config/dev/errorCodes');
-const { isEmpty, isNil } = lodash;
+const { isEmpty } = lodash;
 
 function ProductTypeService() {
-  const timezone = constant.TIMEZONE_DEFAULT;
-  const nowMoment = moment.tz(timezone).utc();
-
   // Create Product Type
   this.createProductType = async function (args, opts) {
     const { loggingFactory, requestId } = opts;
-
-    args.createdAt = nowMoment;
-    args.createdBy = 'SYSTEMS';
-    args.updatedAt = nowMoment;
-    args.updatedBy = 'SYSTEMS';
-
+    args = addFieldForAuditing(args, 'create');
+    loggingFactory.debug(`function createProductType begin`, {
+      requestId: `${requestId}`
+    })
     return checkDuplicateSlug(args.slug)
       .then(duplicate => {
         if (duplicate) {
@@ -38,7 +33,7 @@ function ProductTypeService() {
         })
           .then(productType => convertProductTypeResponse(productType))
           .catch(err => {
-            loggingFactory.error(`Create Product Type Error: ${err}`, { requestId: `${requestId}` });
+            loggingFactory.error(`function createProductType has error: ${err}`, { requestId: `${requestId}` });
             return Promise.reject(err);
           });
       })
@@ -54,6 +49,9 @@ function ProductTypeService() {
     const sort = createSortQuery(params);
 
     const response = {};
+    loggingFactory.debug(`function getProductTypes begin`, {
+      requestId: `${requestId}`
+    })
     return dataStore.find({
       type: 'ProductTypeModel',
       filter: query,
@@ -84,7 +82,9 @@ function ProductTypeService() {
         return response;
       })
       .catch(err => {
-        loggingFactory.error(`Get Product Type Error : ${err}`, { requestId: requestId });
+        loggingFactory.error(`function getProductTypes : ${err}`, {
+          requestId: requestId
+        });
         return Promise.reject(err);
       })
   };
@@ -98,17 +98,16 @@ function ProductTypeService() {
     })
       .then(ProductType => convertProductTypeResponse(ProductType))
       .catch(err => {
-        loggingFactory.error(`Get By Id Error : ${err}`, { requestId: `${requestId}` });
+        loggingFactory.error(`function getByIdProductType has error : ${err}`, {
+          requestId: `${requestId}`
+        });
         return Promise.reject(err);
       })
   };
   // Update ProductType
   this.updateProductType = async function (args, opts) {
     const { loggingFactory, requestId } = opts;
-
-    args.updatedAt = nowMoment;
-    args.updatedBy = 'SYSTEMS';
-
+    args = addFieldForAuditing(args);
     const productTypeId = args.id;
     return checkDuplicateSlug(args.slug, productTypeId)
       .then(duplicate => {
@@ -124,12 +123,31 @@ function ProductTypeService() {
         })
           .then(productType => convertProductTypeResponse(productType))
           .catch(err => {
-            loggingFactory.error(`Update Product Type Error : ${err}`, { requestId: `${requestId}` });
+            loggingFactory.error(`function updateProductType has error : ${err}`, {
+              requestId: `${requestId}`
+            });
             return Promise.reject(err);
           })
       })
   };
 };
+
+function addFieldForAuditing(args, action) {
+  const timezone = constants.TIMEZONE_DEFAULT;
+  const nowMoment = moment.tz(timezone).utc();
+
+  if (action === 'create') {
+    args.createdAt = nowMoment;
+    args.createdBy = 'SYSTEMS';
+    args.updatedAt = nowMoment;
+    args.updatedBy = 'SYSTEMS';
+  }
+
+  args.updatedAt = nowMoment;
+  args.updatedBy = 'SYSTEMS';
+
+  return args;
+}
 
 function checkDuplicateSlug(slug, id) {
   return dataStore.count({

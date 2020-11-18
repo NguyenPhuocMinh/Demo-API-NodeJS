@@ -21,12 +21,7 @@ function GiftService() {
   // Create Gift
   this.createGift = async function (args, opts) {
     const { loggingFactory, requestId } = opts;
-
-    args.createdAt = nowMoment;
-    args.createdBy = 'SYSTEMS';
-    args.updatedAt = nowMoment;
-    args.updatedBy = 'SYSTEMS';
-
+    args = addFieldForAuditing(args, 'create');
     return checkDuplicateSlug(args.slug)
       .then(duplicate => {
         if (duplicate) {
@@ -38,14 +33,15 @@ function GiftService() {
         })
           .then(gift => convertGiftResponse(gift))
           .catch(err => {
-            loggingFactory.error(`Create Gift Error: ${err}`, { requestId: `${requestId}` });
+            loggingFactory.error(`function createGift has error: ${err}`, { requestId: `${requestId}` });
             return Promise.reject(err);
           });
       })
   };
   // Get Gifts
-  this.getGifts = function (req, res) {
-    const params = req.query;
+  this.getGifts = function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+    const params = args.params;
     const skip = parseInt(params._start) || constant.SKIP_DEFAULT;
     let limit = parseInt(params._end) || constant.LIMIT_DEFAULT;
     limit = limit - skip;
@@ -53,87 +49,119 @@ function GiftService() {
     const sort = createSortQuery(params);
 
     const response = {};
-    return Gift.find(query, {
-      createdAt: 0,
-      createdBy: 0,
-      updatedAt: 0,
-      updatedBy: 0
-    },
-      {
-        sort: sort, skip: skip, limit: limit
+    loggingFactory.debug(`function getGifts begin`, {
+      requestId: `${requestId}`
+    })
+    return dataStore.find({
+      type: 'GiftModel',
+      filter: query,
+      projection: {
+        createdAt: 0,
+        createdBy: 0,
+        updatedAt: 0,
+        updatedBy: 0
+      },
+      options: {
+        sort: sort,
+        skip: skip,
+        limit: limit
       }
-    )
+    })
       .then(gifts => convertGetGifts(gifts))
       .then(dataResponse => {
         response.data = dataResponse;
       })
       .then(() => {
-        return Gift.countDocuments(query)
+        return dataStore.count({
+          type: 'GiftModel',
+          filter: query
+        })
       })
       .then(total => {
         response.total = total;
+        loggingFactory.debug(`function getGifts end`, {
+          requestId: `${requestId}`
+        })
         return response;
       })
-      .then(() => {
-        res
-          .header("X-Total-Count", response.total)
-          .header("Access-Control-Expose-Headers", "X-Total-Count")
-          .send(response.data)
-      })
       .catch(err => {
-        loggingFactory.error('Get Gift Error', err);
+        loggingFactory.error(`function getGifts has error : ${err}`, {
+          requestId: `${requestId}`
+        })
         return Promise.reject(err);
       })
   };
   // Get By Id Gift
-  this.getByIdGift = function (req, res) {
-    const giftId = req.params.id;
-    return Gift.findById({ _id: giftId })
+  this.getByIdGift = function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+    const giftId = args.id;
+    return dataStore.get({
+      type: 'GiftModel',
+      id: giftId
+    })
       .then(gift => convertGiftResponse(gift))
-      .then(result => res.send(result))
       .catch(err => {
-        loggingFactory.error("Get By Id Error", err);
+        loggingFactory.error(`function getByIdGift has error : ${err}`, {
+          requestId: `${requestId}`
+        })
         return Promise.reject(err);
       })
   };
   // Update Gift
-  this.updateGift = async function (req, res) {
-    const slug = slugifyString(req.body.username)
-    const giftId = req.params.id;
-
-    return checkDuplicateSlug(slug, giftId)
+  this.updateGift = async function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+    const giftId = args.id;
+    args = addFieldForAuditing(args);
+    loggingFactory.error(`function updateGift begin : ${args.id}`, {
+      requestId: `${requestId}`
+    })
+    return checkDuplicateSlug(args.slug, giftId)
       .then(duplicate => {
         if (duplicate) {
           if (duplicate) {
-            loggingFactory.info('duplicate', duplicate);
-            return res.status(400).send(returnCodes('duplicateGift'));
+            return Promise.reject(returnCodes(errorCodes, 'duplicateGift'));
           }
         }
-        return Gift.findByIdAndUpdate(
-          { _id: GiftId },
-          {
-            name: req.body.name,
-            activated: req.body.activated,
-            slug: slug,
-            updatedAt: nowMoment,
-            updatedBy: 'SYSTEMS'
-          },
-          { new: true }
-        )
+        return dataStore.update({
+          type: 'GiftModel',
+          id: giftId,
+          data: args
+        })
           .then(gift => convertGiftResponse(gift))
-          .then(result => res.send(result))
           .catch(err => {
-            loggingFactory.error("Update Gift Error ", err);
+            loggingFactory.error(`function updateGift has error : ${err}`, {
+              requestId: `${requestId}`
+            })
             return Promise.reject(err);
           })
       })
   };
 };
 
+function addFieldForAuditing(args, action) {
+  const timezone = constants.TIMEZONE_DEFAULT;
+  const nowMoment = moment.tz(timezone).utc();
+
+  if (action === 'create') {
+    args.createdAt = nowMoment;
+    args.createdBy = 'SYSTEMS';
+    args.updatedAt = nowMoment;
+    args.updatedBy = 'SYSTEMS';
+  }
+
+  args.updatedAt = nowMoment;
+  args.updatedBy = 'SYSTEMS';
+
+  return args;
+}
+
 function checkDuplicateSlug(slug, id) {
-  return Gift.countDocuments({
-    _id: { $ne: id },
-    slug: slug,
+  return dataStore.count({
+    type: 'GiftModel',
+    filter: {
+      _id: { $ne: id },
+      slug: slug,
+    }
   }).then(result => result >= 1 ? true : false)
 }
 
@@ -159,8 +187,7 @@ function convertGiftResponse(gift) {
 };
 
 function createFindQuery(params) {
-  let q = params.q;
-  const { activated } = params;
+  const { q, activated } = params;
   const query = {
     $and: [
       {
@@ -170,13 +197,12 @@ function createFindQuery(params) {
   }
 
   if (!isEmpty(q)) {
-    q = slugifyString(q);
     query["$and"] = [];
     let subQuerySearch = { $or: [] };
     let searchProperties = ["slug"];
     searchProperties.forEach(function (property) {
       let searchCondition = {};
-      searchCondition[property] = { $regex: q, $options: "i" };
+      searchCondition[property] = { $regex: slugifyString(q), $options: "i" };
       subQuerySearch["$or"].push(searchCondition);
     });
     query["$and"].push(subQuerySearch);

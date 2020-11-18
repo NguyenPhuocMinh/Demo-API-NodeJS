@@ -15,17 +15,13 @@ const errorCodes = require('../../config/dev/errorCodes');
 const { isEmpty, get } = lodash;
 
 function ProductService() {
-  const timezone = constants.TIMEZONE_DEFAULT;
-  const nowMoment = moment.tz(timezone).utc();
-
   // Create Product
   this.createProduct = async function (args, opts) {
     const { loggingFactory, requestId } = opts;
-    args.createdAt = nowMoment;
-    args.createdBy = 'SYSTEMS';
-    args.updatedAt = nowMoment;
-    args.updatedBy = 'SYSTEMS';
-
+    args = addFieldForAuditing(args, 'create');
+    loggingFactory.debug(`function createProduct`, {
+      requestId: `${requestId}`
+    });
     return checkDuplicateSlug(args.slug)
       .then(duplicate => {
         if (duplicate) {
@@ -37,7 +33,9 @@ function ProductService() {
         })
           .then(product => convertProductResponse(product))
           .catch(err => {
-            loggingFactory.error(`Create Product Has Error : ${err}`, { requestId: `${requestId}` });
+            loggingFactory.error(`function createProduct Has Error : ${err}`, {
+              requestId: `${requestId}`
+            });
             return Promise.reject(err);
           });
       })
@@ -53,6 +51,7 @@ function ProductService() {
     const sort = createSortQuery(params);
 
     const response = {};
+    loggingFactory.debug(`function getProducts`, { requestId: `${requestId}` });
     return dataStore.find({
       type: 'ProductModel',
       filter: query,
@@ -66,7 +65,7 @@ function ProductService() {
         sort: sort,
         skip: skip,
         limit: limit
-      }
+      },
     })
       .then(products => convertGetProducts(products))
       .then(dataResponse => {
@@ -80,12 +79,15 @@ function ProductService() {
       })
       .then(total => {
         response.total = total;
-        loggingFactory.info(`Get product complete`, { requestId: `${requestId}` });
+        loggingFactory.info(`function getProducts end`, {
+          requestId: `${requestId}`
+        });
         return response;
       })
       .catch(err => {
-        console.log("ProductService -> err", err)
-        loggingFactory.error(`Get account Error : ${err}`, { requestId: `${requestId}` });
+        loggingFactory.error(`function getProducts has error : ${err}`, {
+          requestId: `${requestId}`
+        });
         return Promise.reject(err);
       })
   };
@@ -93,13 +95,18 @@ function ProductService() {
   this.getByIdProduct = function (args, opts) {
     const { loggingFactory, requestId } = opts;
     const productId = args.id;
+    loggingFactory.debug(`function getByIdProduct begin`, {
+      requestId: `${requestId}`
+    });
     return dataStore.get({
       type: 'ProductModel',
       id: productId
     })
       .then(product => convertProductResponse(product))
       .catch(err => {
-        loggingFactory.error(`Get By Id Error : ${err}`, { requestId: `${requestId}` });
+        loggingFactory.error(`function getByIdProduct has error : ${err}`, {
+          requestId: `${requestId}`
+        });
         return Promise.reject(err);
       })
   };
@@ -107,10 +114,10 @@ function ProductService() {
   this.updateProduct = async function (args, opts) {
     const { loggingFactory, requestId } = opts;
     const productId = args.id;
-
-    args.updatedAt = nowMoment;
-    args.updatedBy = 'SYSTEMS';
-
+    args = addFieldForAuditing(args);
+    loggingFactory.debug(`function updateProduct begin`, {
+      requestId: `${requestId}`
+    });
     return checkDuplicateSlug(args.slug, productId)
       .then(duplicate => {
         if (duplicate) {
@@ -125,12 +132,29 @@ function ProductService() {
         })
           .then(product => convertProductResponse(product))
           .catch(err => {
-            loggingFactory.error(`Update Product Error : ${err} `, { requestId: requestId });
+            loggingFactory.error(`function updateProduct has error : ${err} `, { requestId: requestId });
             return Promise.reject(err);
           })
       })
   };
 };
+
+function addFieldForAuditing(args, action) {
+  const timezone = constants.TIMEZONE_DEFAULT;
+  const nowMoment = moment.tz(timezone).utc();
+
+  if (action === 'create') {
+    args.createdAt = nowMoment;
+    args.createdBy = 'SYSTEMS';
+    args.updatedAt = nowMoment;
+    args.updatedBy = 'SYSTEMS';
+  }
+
+  args.updatedAt = nowMoment;
+  args.updatedBy = 'SYSTEMS';
+
+  return args;
+}
 
 function checkDuplicateSlug(slug, id) {
   return dataStore.count({

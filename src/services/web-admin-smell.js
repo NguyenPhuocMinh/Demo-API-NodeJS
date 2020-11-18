@@ -7,47 +7,42 @@ const {
   lodash,
   moment,
   loggingFactory,
-  slugifyString
+  slugifyString,
+  returnCodes
 } = webServer;
+const dataStore = require('winrow-repository').dataStore;
 const constant = require('../utils/constant');
-const returnCodes = require('../../config/dev/errorCodes');
+const errorCodes = require('../../config/dev/errorCodes');
 const { isEmpty } = lodash;
 
 function SmellService() {
-  const timezone = constant.TIMEZONE_DEFAULT;
-  const nowMoment = moment.tz(timezone).utc();
-
   // Create Smell
-  this.createSmell = async function (req, res) {
-    const slug = slugifyString(req.body.name);
-    const smell = new Smell({
-      name: req.body.name,
-      activated: req.body.activated,
-      slug: slug,
-      createdAt: nowMoment,
-      createdBy: 'SYSTEMS',
-      updatedAt: nowMoment,
-      updatedBy: 'SYSTEMS'
-    })
-    return checkDuplicateSlug(slug)
+  this.createSmell = async function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+    args = addFieldForAuditing(args, 'create');
+    loggingFactory.debug(`function createSmell begin`, { requestId: `${requestId}` })
+    return checkDuplicateSlug(args.slug)
       .then(duplicate => {
         if (duplicate) {
-          loggingFactory.info('duplicate', duplicate);
-          return res.status(400).send(returnCodes('DuplicateSlugSmell'));
+          return Promise.reject(returnCodes(errorCodes, 'DuplicateSlugSmell'));
         }
-        return Promise.resolve(smell)
+        return dataStore.create({
+          type: 'SmellModel',
+          data: args
+        })
           .then(smell => convertSmellResponse(smell))
-          .then(result => res.send(result))
-          .then(() => smell.save())
           .catch(err => {
-            loggingFactory.error('Create Smell Error:', JSON.stringify(err, null, 2));
+            loggingFactory.error(`function createSmell has error: : ${err}`, {
+              requestId: `${requestId}`
+            });
             return Promise.reject(err);
           });
       })
   };
   // Get Smells
-  this.getSmells = function (req, res) {
-    const params = req.query;
+  this.getSmells = function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+    const params = args.params;
     const skip = parseInt(params._start) || constant.SKIP_DEFAULT;
     let limit = parseInt(params._end) || constant.LIMIT_DEFAULT;
     limit = limit - skip;
@@ -55,87 +50,118 @@ function SmellService() {
     const sort = createSortQuery(params);
 
     const response = {};
-    return Smell.find(query, {
-      createdAt: 0,
-      createdBy: 0,
-      updatedAt: 0,
-      updatedBy: 0
-    },
-      {
-        sort: sort, skip: skip, limit: limit
+    loggingFactory.debug(`function getSmells begin`, { requestId: `${requestId}` });
+    return dataStore.find({
+      type: 'SmellModel',
+      filter: query,
+      projection: {
+        createdAt: 0,
+        createdBy: 0,
+        updatedAt: 0,
+        updatedBy: 0
+      },
+      options: {
+        sort: sort,
+        skip: skip,
+        limit: limit
       }
-    )
+    })
       .then(smells => convertGetSmells(smells))
       .then(dataResponse => {
         response.data = dataResponse;
       })
       .then(() => {
-        return Smell.countDocuments(query)
+        return dataStore.count({
+          type: 'SmellModel',
+          filter: query
+        })
       })
       .then(total => {
         response.total = total;
+        loggingFactory.debug(`function getSmells end`, { requestId: `${requestId}` });
         return response;
       })
-      .then(() => {
-        res
-          .header("X-Total-Count", response.total)
-          .header("Access-Control-Expose-Headers", "X-Total-Count")
-          .send(response.data)
-      })
       .catch(err => {
-        loggingFactory.error('Get Product Type Error', err);
+        loggingFactory.error(`Get Product Type Error : ${err}`, {
+          requestId: `${requestId}`
+        });
         return Promise.reject(err);
       })
   };
   // Get By Id Smell
-  this.getByIdSmell = function (req, res) {
-    const smellId = req.params.id;
-    return Smell.findById({ _id: smellId })
+  this.getByIdSmell = function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+    const smellId = args.id;
+    loggingFactory.debug(`function getByIdSmell begin : ${args.id}`, {
+      requestId: `${requestId}`
+    })
+    return dataStore.get({
+      type: 'SmellModel',
+      id: smellId
+    })
       .then(smell => convertSmellResponse(smell))
-      .then(result => res.send(result))
       .catch(err => {
-        loggingFactory.error("Get By Id Error", err);
+        loggingFactory.error(`function getByIdSmell has error : ${err}`, {
+          requestId: `${requestId}`
+        });
         return Promise.reject(err);
       })
   };
   // Update Smell
-  this.updateSmell = async function (req, res) {
-    const slug = slugifyString(req.body.username)
-    const smellId = req.params.id;
-
-    return checkDuplicateSlug(slug, smellId)
+  this.updateSmell = async function (args, opts) {
+    const { loggingFactory, requestId } = opts;
+    const smellId = args.id;
+    args = addFieldForAuditing(args);
+    loggingFactory.debug(`function updateSmell begin : ${args.id}`, {
+      requestId: `${requestId}`
+    })
+    return checkDuplicateSlug(args.slug, smellId)
       .then(duplicate => {
         if (duplicate) {
           if (duplicate) {
-            loggingFactory.info('duplicate', duplicate);
-            return res.status(400).send(returnCodes('duplicateSmell'));
+            return Promise.reject(returnCodes(errorCodes, 'duplicateSmell'));
           }
         }
-        return Smell.findByIdAndUpdate(
-          { _id: SmellId },
-          {
-            name: req.body.name,
-            activated: req.body.activated,
-            slug: slug,
-            updatedAt: nowMoment,
-            updatedBy: 'SYSTEMS'
-          },
-          { new: true }
-        )
+        return dataStore.update({
+          type: 'SmellModel',
+          id: smellId,
+          data: args
+        })
           .then(smell => convertSmellResponse(smell))
-          .then(result => res.send(result))
           .catch(err => {
-            loggingFactory.error("Update Smell Error ", err);
+            loggingFactory.debug(`function updateSmell has error : ${err}`, {
+              requestId: `${requestId}`
+            })
             return Promise.reject(err);
           })
       })
   };
 };
 
+function addFieldForAuditing(args, action) {
+  const timezone = constants.TIMEZONE_DEFAULT;
+  const nowMoment = moment.tz(timezone).utc();
+
+  if (action === 'create') {
+    args.createdAt = nowMoment;
+    args.createdBy = 'SYSTEMS';
+    args.updatedAt = nowMoment;
+    args.updatedBy = 'SYSTEMS';
+  }
+
+  args.updatedAt = nowMoment;
+  args.updatedBy = 'SYSTEMS';
+
+  return args;
+}
+
 function checkDuplicateSlug(slug, id) {
-  return Smell.countDocuments({
-    _id: { $ne: id },
-    slug: slug,
+  return dataStore.count({
+    type: 'SmellModel',
+    filter: {
+      _id: { $ne: id },
+      slug: slug,
+    }
   }).then(result => result >= 1 ? true : false)
 }
 

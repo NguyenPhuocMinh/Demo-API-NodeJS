@@ -20,18 +20,15 @@ const { isEmpty, get } = lodash;
 let tokenList = {};
 
 function UserService() {
-  const timezone = constants.TIMEZONE_DEFAULT;
-  const nowMoment = moment.tz(timezone).utc();
-
   // register user
   this.registerUser = async function (args, opts) {
-    const { loggingFactory } = opts;
+    const { loggingFactory, requestId } = opts;
     loggingFactory.info(JSON.stringify(args));
 
-    args.createdAt = nowMoment;
-    args.createdBy = 'SYSTEMS';
-    args.updatedAt = nowMoment;
-    args.updatedBy = 'SYSTEMS';
+    args = addFieldForAuditing(args, 'create');
+
+    loggingFactory.debug(`function registerUser begin`, { requestId: `${requestId}` });
+
     // Hash Password
     let password = '';
     if (isEmpty(args.password)) {
@@ -56,6 +53,7 @@ function UserService() {
         })
           .then(user => convertUserResponse(user))
           .catch(err => {
+            loggingFactory.error(`function registerUser has error : ${err}`, { requestId: `${requestId}` });
             return Promise.reject(err);
           })
       })
@@ -64,7 +62,7 @@ function UserService() {
   this.loginUser = async function (args, opts) {
     const { loggingFactory, requestId } = opts;
     try {
-      loggingFactory.debug('User login begin', { requestId: `${requestId}` });
+      loggingFactory.debug('function loginUser', { requestId: `${requestId}` });
       const userLogin = await dataStore.findOne({
         type: 'UserModel',
         filter: {
@@ -85,7 +83,7 @@ function UserService() {
         expiresIn: data.refreshTokenLife
       })
       tokenList[refreshToken] = userLogin;
-      loggingFactory.debug('User login end', { requestId: `${requestId}` });
+      loggingFactory.debug('function loginUser end', { requestId: `${requestId}` });
       return {
         token: token,
         refreshToken: refreshToken,
@@ -96,14 +94,13 @@ function UserService() {
         webConfig: webConfig
       }
     } catch (err) {
-      console.log("err", err)
-      loggingFactory.error('Error Login:', JSON.stringify(err, null, 1))
+      loggingFactory.error(`function loginUser has error : ${err}`, { requestId: `${requestId}` });
       return Promise.reject(err);
     }
   };
   // get user
   this.getUsers = function (args, opts) {
-    const { loggingFactory } = opts;
+    const { loggingFactory, requestId } = opts;
     const params = args.params;
     const skip = parseInt(params._start) || constants.SKIP_DEFAULT;
     let limit = parseInt(params._end) || constants.LIMIT_DEFAULT;
@@ -112,6 +109,7 @@ function UserService() {
     const sort = createSortQuery(params);
 
     const response = {};
+    loggingFactory.debug(`function getUsers begin`, { requestId: `${requestId}` })
     return dataStore.find({
       type: 'UserModel',
       filter: query,
@@ -139,24 +137,26 @@ function UserService() {
       })
       .then(total => {
         response.total = total;
+        loggingFactory.debug(`function getUsers end`, { requestId: `${requestId}` })
         return response;
       })
       .catch(err => {
-        loggingFactory.error('Get user Error', err);
+        loggingFactory.error(`function getUsers has error : ${err}`, { requestId: `${requestId}` })
         return Promise.reject(err);
       })
   };
   // get user by id
   this.getUserById = function (args, opts) {
-    const { loggingFactory } = opts;
+    const { loggingFactory, requestId } = opts;
     const userId = args.id;
+    loggingFactory.debug(`function getUserById begin : ${args.id}`, { requestId: `${requestId}` });
     return dataStore.get({
       type: 'UserModel',
       id: userId
     })
       .then(user => convertUserResponse(user))
       .catch(err => {
-        loggingFactory.error("Get By Id Error", err);
+        loggingFactory.error(`function getUserById has error : ${err}`, { requestId: `${requestId}` });
         return Promise.reject(err);
       })
   };
@@ -203,8 +203,9 @@ function UserService() {
   };
   // change password
   this.changePassword = async function (args, opts) {
-    const { loggingFactory } = opts;
+    const { loggingFactory, requestId } = opts;
     let userId = args.id;
+    loggingFactory.debug(`function changePassword begin : ${args.id}`, { requestId: `${requestId}` });
     // tìm password trong database
     const user = await dataStore.findOne({
       type: 'UserModel',
@@ -237,20 +238,21 @@ function UserService() {
     return Promise.resolve(updateUser)
       .then(result => {
         if (result.ok === 1) {
+          loggingFactory.debug(`function changePassword end`, { requestId: `${requestId}` });
           return { message: 'Đổi mật khẩu thành công !' }
         }
       })
       .catch(err => {
-        loggingFactory.error('Change Pass Error: ', err);
+        loggingFactory.error(`function changePassword has error : ${err}`, { requestId: `${requestId}` });
         return Promise.reject(err)
       })
   };
   // update user
   this.updateUser = function (args, opts) {
-    const { loggingFactory } = opts;
+    const { loggingFactory, requestId } = opts;
     const userId = args.id;
-    args.updatedAt = nowMoment;
-    args.updatedBy = 'SYSTEMS';
+    args = addFieldForAuditing(args);
+    loggingFactory.debug(`function updateUser : ${args.id}`, { requestId: `${requestId}` })
 
     return checkDuplicateEmail(args.email, userId)
       .then(duplicate => {
@@ -264,12 +266,29 @@ function UserService() {
         })
           .then(user => convertUserResponse(user))
           .catch(err => {
-            loggingFactory.error("Update User Error ", err);
+            loggingFactory.error(`function updateUser has error : ${err} `, { requestId: `${requestId}` });
             return Promise.reject(err);
           })
       })
   };
 };
+
+function addFieldForAuditing(args, action) {
+  const timezone = constants.TIMEZONE_DEFAULT;
+  const nowMoment = moment.tz(timezone).utc();
+
+  if (action === 'create') {
+    args.createdAt = nowMoment;
+    args.createdBy = 'SYSTEMS';
+    args.updatedAt = nowMoment;
+    args.updatedBy = 'SYSTEMS';
+  }
+
+  args.updatedAt = nowMoment;
+  args.updatedBy = 'SYSTEMS';
+
+  return args;
+}
 
 function checkDuplicateEmail(email, id) {
   return dataStore.count({
