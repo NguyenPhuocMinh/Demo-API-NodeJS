@@ -9,7 +9,6 @@ const {
   loggingFactory,
   slugifyString
 } = webServer;
-const Smell = require('modeller').SmellModel;
 const constant = require('../utils/constant');
 const returnCodes = require('../../config/dev/errorCodes');
 const { isEmpty } = lodash;

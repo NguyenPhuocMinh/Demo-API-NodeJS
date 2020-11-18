@@ -10,7 +10,6 @@ const {
   returnCodes
 } = winrow;
 const dataStore = require('winrow-repository').dataStore;
-const ProductType = require('modeller').ProductTypeModel;
 const constant = require('../utils/constant');
 const errorCodes = require('../../config/dev/errorCodes');
 const { isEmpty, isNil } = lodash;

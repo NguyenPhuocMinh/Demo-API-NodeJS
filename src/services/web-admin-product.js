@@ -12,7 +12,6 @@ const {
 const dataStore = require('winrow-repository').dataStore;
 const constants = require('../utils/constant');
 const errorCodes = require('../../config/dev/errorCodes');
-const { data } = require('../../../winrow-logger/lib/logger');
 const { isEmpty, get } = lodash;
 
 function ProductService() {
