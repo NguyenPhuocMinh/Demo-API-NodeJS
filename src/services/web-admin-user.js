@@ -7,9 +7,9 @@ const {
   lodash,
   moment,
   returnCodes,
+  jwt
 } = winrow;
 const dataStore = require('winrow-repository').dataStore;
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const constants = require('../utils/constant');
 const data = require('../../config/data/secret');

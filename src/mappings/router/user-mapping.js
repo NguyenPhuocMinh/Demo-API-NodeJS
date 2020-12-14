@@ -35,6 +35,35 @@ module.exports = [
       }
     }
   },
+  // user login
+  {
+    pathName: '/user/logins',
+    method: 'POST',
+    methodName: 'loginUser',
+    serviceName: UserService,
+    input: {
+      transform: function (req) {
+        const { valid, errors } = validator(userLoginSchema, req.body);
+        if (!valid) {
+          return Promise.reject(errors);
+        }
+        return {
+          email: req.body.email,
+          password: req.body.password
+        }
+      }
+    },
+    output: {
+      transform: function (response) {
+        return {
+          headers: {
+            'X-AccessToken': get(response, 'token')
+          },
+          body: response
+        }
+      }
+    }
+  },
   // get users
   {
     pathName: '/users',
@@ -76,35 +105,6 @@ module.exports = [
     output: {
       transform: function (response) {
         return {
-          body: response
-        }
-      }
-    }
-  },
-  // user login
-  {
-    pathName: '/user/logins',
-    method: 'POST',
-    methodName: 'loginUser',
-    serviceName: UserService,
-    input: {
-      transform: function (req) {
-        const { valid, errors } = validator(userLoginSchema, req.body);
-        if (!valid) {
-          return Promise.reject(errors);
-        }
-        return {
-          email: req.body.email,
-          password: req.body.password
-        }
-      }
-    },
-    output: {
-      transform: function (response) {
-        return {
-          headers: {
-            'X-AccessToken': get(response, 'token')
-          },
           body: response
         }
       }

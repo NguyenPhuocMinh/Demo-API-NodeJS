@@ -15,11 +15,10 @@
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.0.0",
-    "jsonwebtoken": "^8.5.1",
     "modeller": "git+https://github.com/NguyenPhuocMinh/Modeller.git#649ddac923a532be8053f6f7d4ac66e9b82a9960",
-    "winrow": "^2.0.7",
+    "winrow": "git+https://github.com/NguyenPhuocMinh/app-webserver.git#21c59a7ad022b9beb42b10596509113242a873d2",
     "winrow-repository": "^1.5.0",
-    "winrow-transform": "^1.5.0"
+    "winrow-transform": "git+https://github.com/NguyenPhuocMinh/app-transform.git#70329d848aa1e14bba30717d4b5967f893e8b7fe"
   },
   "engines": {
     "node": "10.x"
