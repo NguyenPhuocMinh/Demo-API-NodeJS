@@ -10,7 +10,7 @@ const {
   jwt
 } = winrow;
 const dataStore = require('winrow-repository').dataStore;
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const constants = require('../utils/constant');
 const data = require('../../config/data/secret');
 const verify = require('../utils/verifyToken');
