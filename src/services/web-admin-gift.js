@@ -1,23 +1,16 @@
 'use strict';
 
 const winrow = require('winrow');
-require('winrow').momentTimezone;
-const {
-  Promise,
-  lodash,
-  moment,
-  slugifyString,
-  returnCodes
-} = winrow;
-const dataStore = require('winrow-repository').dataStore;
+winrow.require('moment-timezone');
+const Promise = winrow.require('bluebird');
+const lodash = winrow.require('lodash');
+const moment = winrow.require('moment');
 const constant = require('../utils/constant');
 const errorCodes = require('../../config/dev/errorCodes');
 const { isEmpty } = lodash;
 
-function GiftService() {
-  const timezone = constant.TIMEZONE_DEFAULT;
-  const nowMoment = moment.tz(timezone).utc();
-
+function GiftService(params = {}) {
+  const { dataStore, returnCodes } = params;
   // Create Gift
   this.createGift = async function (args, opts) {
     const { loggingFactory, requestId } = opts;
@@ -223,4 +216,5 @@ function createSortQuery(params) {
   return JSON.parse(jsonStringSort);
 };
 
-module.exports = new GiftService();
+exports = module.exports = new GiftService();
+exports.init = GiftService;

@@ -1,20 +1,17 @@
 'use strict';
 
 const winrow = require('winrow');
-require('winrow').momentTimezone;
-const {
-  Promise,
-  lodash,
-  moment,
-  slugifyString,
-  returnCodes
-} = winrow;
-const dataStore = require('winrow-repository').dataStore;
+winrow.require('moment-timezone');
+const slugifyString = winrow.slugifyString;
+const Promise = winrow.require('bluebird');
+const lodash = winrow.require('lodash');
+const moment = winrow.require('moment');
 const constants = require('../utils/constant');
 const errorCodes = require('../../config/dev/errorCodes');
 const { isEmpty, get } = lodash;
 
-function ProductService() {
+function ProductService(params = {}) {
+  const { dataStore, returnCodes } = params;
   // Create Product
   this.createProduct = async function (args, opts) {
     const { loggingFactory, requestId } = opts;
@@ -226,4 +223,5 @@ function createSortQuery(params) {
   return JSON.parse(jsonStringSort);
 };
 
-module.exports = new ProductService();
+exports = module.exports = new ProductService();
+exports.init = ProductService;

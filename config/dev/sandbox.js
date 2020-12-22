@@ -11,17 +11,21 @@ module.exports = {
       host: 'exampledomain.com'
     },
     bridge: {
-      database_local: {
-        host: 'localhost',
-        port: '27017',
-        name: 'demoWhey',
+      connect: {
+        database_local: {
+          host: 'localhost',
+          port: '27017',
+          name: 'demoWhey',
+        },
+        database_server: {
+          host: 'localhost',
+          port: '27017',
+          name: 'demo',
+        }
       },
-      database_server: {
-        host: 'localhost',
-        port: '27017',
-        name: 'demo',
+      rest_api: {
+        mappings: mappings
       }
     },
-    mappings: mappings
   },
 }

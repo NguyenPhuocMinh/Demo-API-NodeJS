@@ -1,21 +1,16 @@
 'use strict';
 
-const webServer = require('winrow');
-require('winrow').momentTimezone;
-const {
-  Promise,
-  lodash,
-  moment,
-  loggingFactory,
-  slugifyString,
-  returnCodes
-} = webServer;
-const dataStore = require('winrow-repository').dataStore;
+const winrow = require('winrow');
+winrow.require('moment-timezone');
+const Promise = winrow.require('bluebird');
+const lodash = winrow.require('lodash');
+const moment = winrow.require('moment');
 const constant = require('../utils/constant');
 const errorCodes = require('../../config/dev/errorCodes');
 const { isEmpty } = lodash;
 
-function SmellService() {
+function SmellService(params = {}) {
+  const { dataStore, returnCodes } = params;
   // Create Smell
   this.createSmell = async function (args, opts) {
     const { loggingFactory, requestId } = opts;
@@ -225,4 +220,5 @@ function createSortQuery(params) {
   return JSON.parse(jsonStringSort);
 };
 
-module.exports = new SmellService();
+exports = module.exports = new SmellService();
+exports.init = SmellService;

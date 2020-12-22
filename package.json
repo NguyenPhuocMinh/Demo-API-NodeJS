@@ -16,9 +16,7 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "modeller": "git+https://github.com/NguyenPhuocMinh/Modeller.git#649ddac923a532be8053f6f7d4ac66e9b82a9960",
-    "winrow": "^2.0.7",
-    "winrow-repository": "^1.5.0",
-    "winrow-transform": "^1.7.0"
+    "winrow": "git+https://github.com/NguyenPhuocMinh/app-webserver.git#57842a16ca4717dfb9a62f0fd7cf5efad52ddea0"
   },
   "engines": {
     "node": "10.x"

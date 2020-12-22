@@ -4,7 +4,7 @@ const Promise = require('web-server').Promise;
 const lodash = require('web-server').lodash;
 
 function CustomerService() {
-  
+
   // register customer
   this.registerCustomer = function (req, res) {
 
@@ -15,4 +15,5 @@ function CustomerService() {
   };
 };
 
-module.exports = new CustomerService();
+exports = module.exports = new CustomerService();
+exports.init = CustomerService;

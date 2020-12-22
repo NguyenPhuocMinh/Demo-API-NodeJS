@@ -1,16 +1,13 @@
 'use strict';
 
 const winrow = require('winrow');
-require('winrow').momentTimezone;
-const {
-  Promise,
-  lodash,
-  moment,
-  returnCodes,
-  jwt
-} = winrow;
-const dataStore = require('winrow-repository').dataStore;
+winrow.require('moment-timezone');
+const Promise = winrow.require('bluebird');
+const lodash = winrow.require('lodash');
+const moment = winrow.require('moment');
+const jwt = winrow.require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const slugifyString = winrow.slugifyString;
 const constants = require('../utils/constant');
 const data = require('../../config/data/secret');
 const verify = require('../utils/verifyToken');
@@ -19,7 +16,8 @@ const webConfig = require('../../config/dev/webConfig');
 const { isEmpty, get } = lodash;
 let tokenList = {};
 
-function UserService() {
+function UserService(params = {}) {
+  const { dataStore, returnCodes } = params;
   // register user
   this.registerUser = async function (args, opts) {
     const { loggingFactory, requestId } = opts;
@@ -414,4 +412,5 @@ function createSortQuery(params) {
   return JSON.parse(jsonStringSort);
 };
 
-module.exports = new UserService();
+exports = module.exports = new UserService();
+exports.init = UserService;
